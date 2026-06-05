@@ -199,5 +199,11 @@ volumes:
     external: true
     name: plane-app_pgdata
   redisdata:
+    external: true
+    name: plane-app_redisdata
   uploads:
+    external: true
+    name: plane-app_uploads
   rabbitmq_data:
+    external: true
+    name: plane-app_rabbitmq_data
