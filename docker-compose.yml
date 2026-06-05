@@ -49,6 +49,8 @@ services:
     depends_on:
       - plane-db
       - plane-redis
+      - plane-mq
+      - plane-minio
 
   worker:
     container_name: bgworker
@@ -65,6 +67,8 @@ services:
       - api
       - plane-db
       - plane-redis
+      - plane-mq
+      - plane-minio
 
   beat-worker:
     container_name: beatworker
@@ -81,6 +85,8 @@ services:
       - api
       - plane-db
       - plane-redis
+      - plane-mq
+      - plane-minio
 
   migrator:
     container_name: plane-migrator
@@ -96,6 +102,8 @@ services:
     depends_on:
       - plane-db
       - plane-redis
+      - plane-mq
+      - plane-minio
 
   live:
     container_name: plane-live
