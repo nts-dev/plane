@@ -196,6 +196,8 @@ services:
 
 volumes:
   pgdata:
+    external: true
+    name: plane-app_pgdata
   redisdata:
   uploads:
   rabbitmq_data:
