@@ -27,6 +27,7 @@ import { AuthService } from "@/services/auth.service";
 type Props = {
   email: string;
   isSMTPConfigured: boolean;
+  isExternalAuthEnabled?: boolean;
   mode: EAuthModes;
   handleEmailClear: () => void;
   handleAuthStep: (step: EAuthSteps) => void;
@@ -47,7 +48,15 @@ const defaultValues: TPasswordFormValues = {
 const authService = new AuthService();
 
 export const AuthPasswordForm = observer(function AuthPasswordForm(props: Props) {
-  const { email, isSMTPConfigured, handleAuthStep, handleEmailClear, mode, nextPath } = props;
+  const {
+    email,
+    isSMTPConfigured,
+    isExternalAuthEnabled = false,
+    handleAuthStep,
+    handleEmailClear,
+    mode,
+    nextPath,
+  } = props;
   // plane imports
   const { t } = useTranslation();
   // ref
@@ -81,36 +90,41 @@ export const AuthPasswordForm = observer(function AuthPasswordForm(props: Props)
     handleAuthStep(EAuthSteps.UNIQUE_CODE);
   };
 
-  const passwordSupport =
-    mode === EAuthModes.SIGN_IN ? (
-      <div className="w-full">
-        {isSMTPConfigured ? (
-          <Link
-            data-ph-element={AUTH_TRACKER_ELEMENTS.FORGOT_PASSWORD_FROM_SIGNIN}
-            href={`/accounts/forgot-password?email=${encodeURIComponent(email)}`}
-            className="text-11 font-medium text-accent-primary"
-          >
-            {t("auth.common.forgot_password")}
-          </Link>
-        ) : (
-          <ForgotPasswordPopover />
-        )}
-      </div>
-    ) : (
-      passwordFormData.password.length > 0 &&
-      getPasswordStrength(passwordFormData.password) != E_PASSWORD_STRENGTH.STRENGTH_VALID && (
-        <PasswordStrengthIndicator password={passwordFormData.password} isFocused={isPasswordInputFocused} />
-      )
-    );
+  const passwordSupport = isExternalAuthEnabled ? null : mode === EAuthModes.SIGN_IN ? (
+    <div className="w-full">
+      {isSMTPConfigured ? (
+        <Link
+          data-ph-element={AUTH_TRACKER_ELEMENTS.FORGOT_PASSWORD_FROM_SIGNIN}
+          href={`/accounts/forgot-password?email=${encodeURIComponent(email)}`}
+          className="text-11 font-medium text-accent-primary"
+        >
+          {t("auth.common.forgot_password")}
+        </Link>
+      ) : (
+        <ForgotPasswordPopover />
+      )}
+    </div>
+  ) : (
+    passwordFormData.password.length > 0 &&
+    getPasswordStrength(passwordFormData.password) != E_PASSWORD_STRENGTH.STRENGTH_VALID && (
+      <PasswordStrengthIndicator password={passwordFormData.password} isFocused={isPasswordInputFocused} />
+    )
+  );
 
   const isButtonDisabled = useMemo(
     () =>
-      !isSubmitting &&
-      !!passwordFormData.password &&
-      (mode === EAuthModes.SIGN_UP ? passwordFormData.password === passwordFormData.confirm_password : true)
-        ? false
-        : true,
-    [isSubmitting, mode, passwordFormData.confirm_password, passwordFormData.password]
+      isSubmitting ||
+      (isExternalAuthEnabled && !passwordFormData.email) ||
+      !passwordFormData.password ||
+      (mode === EAuthModes.SIGN_UP && passwordFormData.password !== passwordFormData.confirm_password),
+    [
+      isExternalAuthEnabled,
+      isSubmitting,
+      mode,
+      passwordFormData.confirm_password,
+      passwordFormData.email,
+      passwordFormData.password,
+    ]
   );
 
   const password = passwordFormData?.password ?? "";
@@ -148,12 +162,14 @@ export const AuthPasswordForm = observer(function AuthPasswordForm(props: Props)
         ref={formRef}
         className="space-y-4"
         method="POST"
-        action={`${API_BASE_URL}/auth/${mode === EAuthModes.SIGN_IN ? "sign-in" : "sign-up"}/`}
+        action={`${API_BASE_URL}/auth/${
+          isExternalAuthEnabled ? "external/sign-in" : mode === EAuthModes.SIGN_IN ? "sign-in" : "sign-up"
+        }/`}
         onSubmit={async (event) => {
           event.preventDefault(); // Prevent form from submitting by default
           await handleCSRFToken();
           const isPasswordValid =
-            mode === EAuthModes.SIGN_UP
+            mode === EAuthModes.SIGN_UP && !isExternalAuthEnabled
               ? getPasswordStrength(passwordFormData.password) === E_PASSWORD_STRENGTH.STRENGTH_VALID
               : true;
           if (isPasswordValid) {
@@ -168,22 +184,22 @@ export const AuthPasswordForm = observer(function AuthPasswordForm(props: Props)
         }}
       >
         <input type="hidden" name="csrfmiddlewaretoken" />
-        <input type="hidden" value={passwordFormData.email} name="email" />
+        {!isExternalAuthEnabled && <input type="hidden" value={passwordFormData.email} name="email" />}
         {nextPath && <input type="hidden" value={nextPath} name="next_path" />}
         <div className="space-y-1">
-          <label htmlFor="email" className="text-13 font-medium text-tertiary">
-            {t("auth.common.email.label")}
+          <label htmlFor={isExternalAuthEnabled ? "contact_id" : "email"} className="text-13 font-medium text-tertiary">
+            {isExternalAuthEnabled ? "Contact ID" : t("auth.common.email.label")}
           </label>
           <div className={`relative flex items-center rounded-md border border-strong bg-surface-1`}>
             <Input
-              id="email"
-              name="email"
-              type="email"
+              id={isExternalAuthEnabled ? "contact_id" : "email"}
+              name={isExternalAuthEnabled ? "contact_id" : "email"}
+              type={isExternalAuthEnabled ? "text" : "email"}
               value={passwordFormData.email}
               onChange={(e) => handleFormChange("email", e.target.value)}
-              placeholder={t("auth.common.email.placeholder")}
+              placeholder={isExternalAuthEnabled ? "Enter your contact ID" : t("auth.common.email.placeholder")}
               className={`h-10 w-full border-0 disable-autofill-style placeholder:text-placeholder`}
-              disabled
+              disabled={!isExternalAuthEnabled}
             />
             {passwordFormData.email.length > 0 && (
               <button
@@ -214,7 +230,6 @@ export const AuthPasswordForm = observer(function AuthPasswordForm(props: Props)
               onFocus={() => setIsPasswordInputFocused(true)}
               onBlur={() => setIsPasswordInputFocused(false)}
               autoComplete="off"
-              autoFocus
             />
             <button
               type="button"
@@ -289,7 +304,7 @@ export const AuthPasswordForm = observer(function AuthPasswordForm(props: Props)
                   t("common.go_to_workspace")
                 )}
               </Button>
-              {isSMTPConfigured && (
+              {isSMTPConfigured && !isExternalAuthEnabled && (
                 <Button
                   type="button"
                   data-ph-element={AUTH_TRACKER_ELEMENTS.SIGN_IN_WITH_UNIQUE_CODE}

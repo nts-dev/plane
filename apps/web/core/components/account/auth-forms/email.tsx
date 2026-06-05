@@ -23,14 +23,18 @@ type TAuthEmailForm = {
 
 export const AuthEmailForm = observer(function AuthEmailForm(props: TAuthEmailForm) {
   const { onSubmit, defaultEmail } = props;
+  const isExternalAuthEnabled = process.env.VITE_EXTERNAL_AUTH_ENABLED === "1";
   // states
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [email, setEmail] = useState(defaultEmail);
   // plane hooks
   const { t } = useTranslation();
   const emailError = useMemo(
-    () => (email && !checkEmailValidity(email) ? { email: "auth.common.email.errors.invalid" } : undefined),
-    [email]
+    () =>
+      !isExternalAuthEnabled && email && !checkEmailValidity(email)
+        ? { email: "auth.common.email.errors.invalid" }
+        : undefined,
+    [email, isExternalAuthEnabled]
   );
 
   const handleFormSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -51,8 +55,8 @@ export const AuthEmailForm = observer(function AuthEmailForm(props: TAuthEmailFo
   return (
     <form onSubmit={handleFormSubmit} className="space-y-4">
       <div className="space-y-1">
-        <label htmlFor="email" className="text-13 font-medium text-tertiary">
-          {t("auth.common.email.label")}
+        <label htmlFor={isExternalAuthEnabled ? "contact_id" : "email"} className="text-13 font-medium text-tertiary">
+          {isExternalAuthEnabled ? "Contact ID" : t("auth.common.email.label")}
         </label>
         <div
           className={cn(
@@ -67,15 +71,14 @@ export const AuthEmailForm = observer(function AuthEmailForm(props: TAuthEmailFo
           }}
         >
           <Input
-            id="email"
-            name="email"
-            type="email"
+            id={isExternalAuthEnabled ? "contact_id" : "email"}
+            name={isExternalAuthEnabled ? "contact_id" : "email"}
+            type={isExternalAuthEnabled ? "text" : "email"}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder={t("auth.common.email.placeholder")}
+            placeholder={isExternalAuthEnabled ? "Enter your contact ID" : t("auth.common.email.placeholder")}
             className={`h-10 w-full border-0 disable-autofill-style placeholder:text-placeholder autofill:bg-danger-primary focus:bg-none active:bg-transparent`}
             autoComplete="off"
-            autoFocus
             ref={inputRef}
           />
           {email.length > 0 && (

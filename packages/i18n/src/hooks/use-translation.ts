@@ -6,6 +6,7 @@
 
 import { useCallback } from "react";
 import { useTranslation as useI18nextTranslation } from "react-i18next";
+import { NAMESPACES } from "../constants/namespaces";
 import { SUPPORTED_LANGUAGES, LANGUAGE_STORAGE_KEY } from "../constants/language";
 import type { TLanguage, ILanguageOption } from "../types";
 
@@ -42,6 +43,18 @@ export function useTranslation(): TTranslationStore {
   // async loads per component, causing a re-render cascade.
   const { t, i18n } = useI18nextTranslation();
 
+  const translate = useCallback(
+    (key: string, params?: Record<string, unknown>) => {
+      const namespace =
+        NAMESPACES.find((namespaceName) => key.startsWith(`${namespaceName}.`)) ||
+        NAMESPACES.find((namespaceName) => i18n.exists(key, { ns: namespaceName }));
+      const translationOptions = namespace ? { ...params, ns: namespace } : params;
+
+      return coerceToString(key, translationOptions === undefined ? t(key) : t(key, translationOptions));
+    },
+    [i18n, t]
+  );
+
   const changeLanguage = useCallback(
     (lng: TLanguage) => {
       void (async () => {
@@ -59,8 +72,7 @@ export function useTranslation(): TTranslationStore {
   );
 
   return {
-    t: (key: string, params?: Record<string, unknown>) =>
-      coerceToString(key, params === undefined ? t(key) : t(key, params)),
+    t: translate,
     currentLocale: i18n.language as TLanguage,
     changeLanguage,
     languages: SUPPORTED_LANGUAGES,

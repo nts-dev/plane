@@ -9,7 +9,7 @@ import { useSearchParams } from "next/navigation";
 // icons
 import { Eye, EyeOff } from "lucide-react";
 // plane internal packages
-import { API_BASE_URL, E_PASSWORD_STRENGTH } from "@plane/constants";
+import { API_BASE_URL, EAuthErrorCodes, E_PASSWORD_STRENGTH } from "@plane/constants";
 import { Button } from "@plane/propel/button";
 import { AuthService } from "@plane/services";
 import { Checkbox, Input, PasswordStrengthIndicator, Spinner } from "@plane/ui";
@@ -24,12 +24,13 @@ const authService = new AuthService();
 
 // error codes
 enum EErrorCodes {
-  INSTANCE_NOT_CONFIGURED = "INSTANCE_NOT_CONFIGURED",
-  ADMIN_ALREADY_EXIST = "ADMIN_ALREADY_EXIST",
-  REQUIRED_EMAIL_PASSWORD_FIRST_NAME = "REQUIRED_EMAIL_PASSWORD_FIRST_NAME",
-  INVALID_EMAIL = "INVALID_EMAIL",
-  INVALID_PASSWORD = "INVALID_PASSWORD",
-  USER_ALREADY_EXISTS = "USER_ALREADY_EXISTS",
+  INSTANCE_NOT_CONFIGURED = EAuthErrorCodes.INSTANCE_NOT_CONFIGURED,
+  ADMIN_ALREADY_EXIST = EAuthErrorCodes.ADMIN_ALREADY_EXIST,
+  REQUIRED_EMAIL_PASSWORD_FIRST_NAME = EAuthErrorCodes.REQUIRED_ADMIN_EMAIL_PASSWORD_FIRST_NAME,
+  INVALID_EMAIL = EAuthErrorCodes.INVALID_ADMIN_EMAIL,
+  INVALID_PASSWORD = EAuthErrorCodes.INVALID_ADMIN_PASSWORD,
+  PASSWORD_TOO_WEAK = EAuthErrorCodes.PASSWORD_TOO_WEAK,
+  USER_ALREADY_EXISTS = EAuthErrorCodes.ADMIN_USER_ALREADY_EXIST,
 }
 
 type TError = {
@@ -57,14 +58,35 @@ const defaultFromData: TFormData = {
   is_telemetry_enabled: true,
 };
 
+const getReadableErrorMessage = (message: string) => {
+  switch (message) {
+    case "PASSWORD_TOO_WEAK":
+      return "Please use a stronger password.";
+    case "INVALID_ADMIN_EMAIL":
+      return "Invalid email. Please try again.";
+    case "INVALID_ADMIN_PASSWORD":
+      return "Invalid password. Please try again.";
+    case "REQUIRED_ADMIN_EMAIL_PASSWORD_FIRST_NAME":
+      return "Email, password, and first name are required.";
+    case "ADMIN_USER_ALREADY_EXIST":
+      return "Admin user already exists. Sign in now.";
+    case "ADMIN_ALREADY_EXIST":
+      return "Admin already exists. Please sign in.";
+    case "INSTANCE_NOT_CONFIGURED":
+      return "Instance not configured. Please try again.";
+    default:
+      return message;
+  }
+};
+
 export function InstanceSetupForm() {
   // search params
   const searchParams = useSearchParams();
   const firstNameParam = searchParams?.get("first_name") || undefined;
   const lastNameParam = searchParams?.get("last_name") || undefined;
-  const companyParam = searchParams?.get("company") || undefined;
+  const companyParam = searchParams?.get("company_name") || undefined;
   const emailParam = searchParams?.get("email") || undefined;
-  const isTelemetryEnabledParam = (searchParams?.get("is_telemetry_enabled") === "True" ? true : false) || true;
+  const isTelemetryEnabledParam = searchParams?.get("is_telemetry_enabled");
   const errorCode = searchParams?.get("error_code") || undefined;
   const errorMessage = searchParams?.get("error_message") || undefined;
   // state
@@ -94,25 +116,29 @@ export function InstanceSetupForm() {
     if (lastNameParam) setFormData((prev) => ({ ...prev, last_name: lastNameParam }));
     if (companyParam) setFormData((prev) => ({ ...prev, company_name: companyParam }));
     if (emailParam) setFormData((prev) => ({ ...prev, email: emailParam }));
-    if (isTelemetryEnabledParam) setFormData((prev) => ({ ...prev, is_telemetry_enabled: isTelemetryEnabledParam }));
+    if (isTelemetryEnabledParam)
+      setFormData((prev) => ({ ...prev, is_telemetry_enabled: isTelemetryEnabledParam === "True" }));
   }, [firstNameParam, lastNameParam, companyParam, emailParam, isTelemetryEnabledParam]);
 
   // derived values
   const errorData: TError = useMemo(() => {
     if (errorCode && errorMessage) {
+      const readableErrorMessage = getReadableErrorMessage(errorMessage);
       switch (errorCode) {
         case EErrorCodes.INSTANCE_NOT_CONFIGURED:
-          return { type: EErrorCodes.INSTANCE_NOT_CONFIGURED, message: errorMessage };
+          return { type: EErrorCodes.INSTANCE_NOT_CONFIGURED, message: readableErrorMessage };
         case EErrorCodes.ADMIN_ALREADY_EXIST:
-          return { type: EErrorCodes.ADMIN_ALREADY_EXIST, message: errorMessage };
+          return { type: EErrorCodes.ADMIN_ALREADY_EXIST, message: readableErrorMessage };
         case EErrorCodes.REQUIRED_EMAIL_PASSWORD_FIRST_NAME:
-          return { type: EErrorCodes.REQUIRED_EMAIL_PASSWORD_FIRST_NAME, message: errorMessage };
+          return { type: EErrorCodes.REQUIRED_EMAIL_PASSWORD_FIRST_NAME, message: readableErrorMessage };
         case EErrorCodes.INVALID_EMAIL:
-          return { type: EErrorCodes.INVALID_EMAIL, message: errorMessage };
+          return { type: EErrorCodes.INVALID_EMAIL, message: readableErrorMessage };
         case EErrorCodes.INVALID_PASSWORD:
-          return { type: EErrorCodes.INVALID_PASSWORD, message: errorMessage };
+          return { type: EErrorCodes.INVALID_PASSWORD, message: readableErrorMessage };
+        case EErrorCodes.PASSWORD_TOO_WEAK:
+          return { type: EErrorCodes.PASSWORD_TOO_WEAK, message: readableErrorMessage };
         case EErrorCodes.USER_ALREADY_EXISTS:
-          return { type: EErrorCodes.USER_ALREADY_EXISTS, message: errorMessage };
+          return { type: EErrorCodes.USER_ALREADY_EXISTS, message: readableErrorMessage };
         default:
           return { type: undefined, message: undefined };
       }
@@ -121,14 +147,12 @@ export function InstanceSetupForm() {
 
   const isButtonDisabled = useMemo(
     () =>
-      !isSubmitting &&
-      formData.first_name &&
-      formData.email &&
-      formData.password &&
-      getPasswordStrength(formData.password) === E_PASSWORD_STRENGTH.STRENGTH_VALID &&
-      formData.password === formData.confirm_password
-        ? false
-        : true,
+      isSubmitting ||
+      !formData.first_name ||
+      !formData.email ||
+      !formData.password ||
+      getPasswordStrength(formData.password) !== E_PASSWORD_STRENGTH.STRENGTH_VALID ||
+      formData.password !== formData.confirm_password,
     [formData.confirm_password, formData.email, formData.first_name, formData.password, isSubmitting]
   );
 
@@ -147,9 +171,9 @@ export function InstanceSetupForm() {
           />
           {errorData.type &&
             errorData?.message &&
-            ![EErrorCodes.INVALID_EMAIL, EErrorCodes.INVALID_PASSWORD].includes(errorData.type) && (
-              <Banner type="error" message={errorData?.message} />
-            )}
+            ![EErrorCodes.INVALID_EMAIL, EErrorCodes.INVALID_PASSWORD, EErrorCodes.PASSWORD_TOO_WEAK].includes(
+              errorData.type
+            ) && <Banner type="error" message={errorData?.message} />}
           <form
             className="space-y-4"
             method="POST"
@@ -180,7 +204,6 @@ export function InstanceSetupForm() {
                     }
                   }}
                   autoComplete="off"
-                  autoFocus
                   maxLength={50}
                 />
               </div>
@@ -221,7 +244,7 @@ export function InstanceSetupForm() {
                 placeholder="name@company.com"
                 value={formData.email}
                 onChange={(e) => handleFormChange("email", e.target.value)}
-                hasError={errorData.type && errorData.type === EErrorCodes.INVALID_EMAIL ? true : false}
+                hasError={Boolean(errorData.type && errorData.type === EErrorCodes.INVALID_EMAIL)}
                 autoComplete="off"
               />
               {errorData.type && errorData.type === EErrorCodes.INVALID_EMAIL && errorData.message && (
@@ -265,7 +288,10 @@ export function InstanceSetupForm() {
                   placeholder="New password"
                   value={formData.password}
                   onChange={(e) => handleFormChange("password", e.target.value)}
-                  hasError={errorData.type && errorData.type === EErrorCodes.INVALID_PASSWORD ? true : false}
+                  hasError={Boolean(
+                    errorData.type &&
+                    [EErrorCodes.INVALID_PASSWORD, EErrorCodes.PASSWORD_TOO_WEAK].includes(errorData.type)
+                  )}
                   onFocus={() => setIsPasswordInputFocused(true)}
                   onBlur={() => setIsPasswordInputFocused(false)}
                   autoComplete="new-password"
@@ -290,9 +316,9 @@ export function InstanceSetupForm() {
                   </button>
                 )}
               </div>
-              {errorData.type && errorData.type === EErrorCodes.INVALID_PASSWORD && errorData.message && (
-                <p className="px-1 text-11 text-danger-primary">{errorData.message}</p>
-              )}
+              {errorData.type &&
+                [EErrorCodes.INVALID_PASSWORD, EErrorCodes.PASSWORD_TOO_WEAK].includes(errorData.type) &&
+                errorData.message && <p className="px-1 text-11 text-danger-primary">{errorData.message}</p>}
               <PasswordStrengthIndicator password={formData.password} isFocused={isPasswordInputFocused} />
             </div>
 

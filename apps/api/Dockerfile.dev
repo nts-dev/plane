@@ -12,6 +12,8 @@ RUN apk --no-cache add \
     "libxslt" \
     "nodejs-current" \
     "xmlsec" \
+    "ca-certificates" \
+    "openssl" \
     "libffi-dev" \
     "bash~=5.2" \
     "g++" \

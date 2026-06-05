@@ -6,6 +6,7 @@
 
 import React, { useEffect, useState } from "react";
 import { I18nextProvider } from "react-i18next";
+import { NAMESPACES } from "../constants/namespaces";
 import { i18nInstance, initPromise } from "../core";
 
 interface TranslationProviderProps {
@@ -13,7 +14,9 @@ interface TranslationProviderProps {
 }
 
 export const TranslationProvider: React.FC<TranslationProviderProps> = ({ children }) => {
-  const [isReady, setIsReady] = useState(i18nInstance.isInitialized);
+  const [isReady, setIsReady] = useState(
+    i18nInstance.isInitialized && NAMESPACES.every((namespace) => i18nInstance.hasLoadedNamespace(namespace))
+  );
 
   useEffect(() => {
     initPromise
