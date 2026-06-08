@@ -65,6 +65,7 @@ from plane.app.permissions import (
     ProjectMemberPermission,
 )
 from plane.bgtasks.issue_activities_task import issue_activity
+from plane.bgtasks.project_task_sync_task import sync_project_task
 from plane.db.models import (
     Issue,
     IssueActivity,
@@ -489,6 +490,11 @@ class IssueListCreateAPIEndpoint(BaseAPIView):
                 actor_id=request.user.id,
                 slug=slug,
                 origin=base_host(request=request, is_app=True),
+            )
+            sync_project_task.delay(
+                issue_data=json.loads(json.dumps(serializer.data, cls=DjangoJSONEncoder)),
+                requested_data=json.loads(json.dumps(request.data, cls=DjangoJSONEncoder)),
+                actor_id=str(request.user.id),
             )
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

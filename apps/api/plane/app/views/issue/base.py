@@ -42,6 +42,7 @@ from plane.app.serializers import (
 )
 from plane.bgtasks.issue_activities_task import issue_activity
 from plane.bgtasks.issue_description_version_task import issue_description_version_task
+from plane.bgtasks.project_task_sync_task import sync_project_task
 from plane.bgtasks.recent_visited_task import recent_visited_task
 from plane.bgtasks.webhook_task import model_activity
 from plane.db.models import (
@@ -473,6 +474,11 @@ class IssueViewSet(BaseViewSet):
                 issue_id=str(serializer.data["id"]),
                 user_id=request.user.id,
                 is_creating=True,
+            )
+            sync_project_task.delay(
+                issue_data=json.loads(json.dumps(issue, cls=DjangoJSONEncoder)),
+                requested_data=json.loads(json.dumps(request.data, cls=DjangoJSONEncoder)),
+                actor_id=str(request.user.id),
             )
             return Response(issue, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
