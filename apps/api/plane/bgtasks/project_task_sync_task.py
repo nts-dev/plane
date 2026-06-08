@@ -76,6 +76,7 @@ def sync_project_task(self, issue_data, requested_data, actor_id=None):
     payload = _build_project_task_payload(issue_data=issue_data, requested_data=requested_data, actor_id=actor_id)
 
     try:
+        logger.info("Posting Plane work item %s to project task API with payload %s", payload["planeWorkItemId"], payload)
         response = requests.post(url, json=payload, timeout=timeout, verify=verify_ssl)
         response.raise_for_status()
         logger.info("Synced Plane work item %s to project task API", payload["planeWorkItemId"])
