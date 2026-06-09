@@ -495,6 +495,7 @@ class IssueListCreateAPIEndpoint(BaseAPIView):
                 issue_data=json.loads(json.dumps(serializer.data, cls=DjangoJSONEncoder)),
                 requested_data=json.loads(json.dumps(request.data, cls=DjangoJSONEncoder)),
                 actor_id=str(request.user.id),
+                actor_contact_id=request.session.get("external_contact_id"),
             )
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

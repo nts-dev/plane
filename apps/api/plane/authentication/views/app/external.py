@@ -61,6 +61,7 @@ class ExternalSignInAuthEndpoint(View):
             )
             user = provider.authenticate()
             user_login(request=request, user=user, is_app=True)
+            request.session["external_contact_id"] = int(str(contact_id).strip())
 
             path = next_path if next_path else get_redirection_path(user=user)
             url = get_safe_redirect_url(
