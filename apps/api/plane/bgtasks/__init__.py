@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # See the LICENSE file for details.
 
-from .project_task_sync_task import sync_project_task, sync_project_task_update
+from .project_task_sync_task import sync_project_task, sync_project_task_delete, sync_project_task_update
 
-__all__ = ("sync_project_task", "sync_project_task_update")
+__all__ = ("sync_project_task", "sync_project_task_delete", "sync_project_task_update")
 

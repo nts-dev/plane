@@ -65,7 +65,7 @@ from plane.app.permissions import (
     ProjectMemberPermission,
 )
 from plane.bgtasks.issue_activities_task import issue_activity
-from plane.bgtasks.project_task_sync_task import sync_project_task, sync_project_task_update
+from plane.bgtasks.project_task_sync_task import sync_project_task, sync_project_task_delete, sync_project_task_update
 from plane.db.models import (
     Issue,
     IssueActivity,
@@ -840,6 +840,7 @@ class IssueDetailAPIEndpoint(BaseAPIView):
                 {"error": "Only admin or creator can delete the work item"},
                 status=status.HTTP_403_FORBIDDEN,
             )
+        work_item_id = str(issue.id)
         current_instance = json.dumps(IssueSerializer(issue).data, cls=DjangoJSONEncoder)
         issue.delete()
         issue_activity.delay(
@@ -851,6 +852,7 @@ class IssueDetailAPIEndpoint(BaseAPIView):
             current_instance=current_instance,
             epoch=int(timezone.now().timestamp()),
         )
+        sync_project_task_delete.delay(work_item_id=work_item_id)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

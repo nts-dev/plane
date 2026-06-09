@@ -42,7 +42,7 @@ from plane.app.serializers import (
 )
 from plane.bgtasks.issue_activities_task import issue_activity
 from plane.bgtasks.issue_description_version_task import issue_description_version_task
-from plane.bgtasks.project_task_sync_task import sync_project_task, sync_project_task_update
+from plane.bgtasks.project_task_sync_task import sync_project_task, sync_project_task_delete, sync_project_task_update
 from plane.bgtasks.recent_visited_task import recent_visited_task
 from plane.bgtasks.webhook_task import model_activity
 from plane.db.models import (
@@ -717,6 +717,7 @@ class IssueViewSet(BaseViewSet):
     @allow_permission([ROLE.ADMIN], creator=True, model=Issue)
     def destroy(self, request, slug, project_id, pk=None):
         issue = Issue.objects.get(workspace__slug=slug, project_id=project_id, pk=pk)
+        work_item_id = str(issue.id)
 
         issue.delete()
         # delete the issue from recent visits
@@ -738,6 +739,7 @@ class IssueViewSet(BaseViewSet):
             origin=base_host(request=request, is_app=True),
             subscriber=False,
         )
+        sync_project_task_delete.delay(work_item_id=work_item_id)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
