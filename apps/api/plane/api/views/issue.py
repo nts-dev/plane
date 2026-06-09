@@ -65,7 +65,7 @@ from plane.app.permissions import (
     ProjectMemberPermission,
 )
 from plane.bgtasks.issue_activities_task import issue_activity
-from plane.bgtasks.project_task_sync_task import sync_project_task
+from plane.bgtasks.project_task_sync_task import sync_project_task, sync_project_task_update
 from plane.db.models import (
     Issue,
     IssueActivity,
@@ -797,6 +797,12 @@ class IssueDetailAPIEndpoint(BaseAPIView):
                 actor_id=request.user.id,
                 slug=slug,
                 origin=base_host(request=request, is_app=True),
+            )
+            sync_project_task_update.delay(
+                issue_data=json.loads(json.dumps(serializer.data, cls=DjangoJSONEncoder)),
+                requested_data=json.loads(requested_data),
+                actor_id=str(request.user.id),
+                actor_contact_id=request.session.get("external_contact_id"),
             )
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

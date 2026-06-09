@@ -85,10 +85,20 @@ def _build_project_task_payload(issue_data, requested_data, actor_id, actor_cont
         "projectId": _env_int("PROJECT_TASK_PROJECT_ID"),
         "workItemTypeId": _env_int("PROJECT_TASK_WORK_ITEM_TYPE_ID"),
         "planeWorkItemId": str(issue_data.get("id", "")),
+        "plane_task_id": str(issue_data.get("id", "")),
         "enteredBy": contact_id,
         "completed": bool(issue_data.get("completed_at")),
         "visible": _env_bool("PROJECT_TASK_VISIBLE", "1"),
     }
+
+
+def _send_project_task_request(url, method, payload, timeout, verify_ssl, action):
+    logger.info("PROJECT_TASK_%s_PAYLOAD %s", action.upper(), json.dumps(payload))
+    logger.info("%s Plane work item %s in project task API", action.title(), payload["planeWorkItemId"])
+
+    response = requests.request(method, url, json=payload, timeout=timeout, verify=verify_ssl)
+    response.raise_for_status()
+    logger.info("%s Plane work item %s in project task API", action.title(), payload["planeWorkItemId"])
 
 
 @shared_task(bind=True, max_retries=3)
@@ -108,11 +118,48 @@ def sync_project_task(self, issue_data, requested_data, actor_id=None, actor_con
     )
 
     try:
-        logger.info("PROJECT_TASK_SYNC_PAYLOAD %s", json.dumps(payload))
-        logger.info("Posting Plane work item %s to project task API", payload["planeWorkItemId"])
-        response = requests.post(url, json=payload, timeout=timeout, verify=verify_ssl)
-        response.raise_for_status()
-        logger.info("Synced Plane work item %s to project task API", payload["planeWorkItemId"])
+        _send_project_task_request(
+            url=url,
+            method="POST",
+            payload=payload,
+            timeout=timeout,
+            verify_ssl=verify_ssl,
+            action="sync",
+        )
+    except requests.RequestException as exc:
+        log_exception(exc, warning=True)
+        raise self.retry(exc=exc, countdown=30)
+
+
+@shared_task(bind=True, max_retries=3)
+def sync_project_task_update(self, issue_data, requested_data, actor_id=None, actor_contact_id=None):
+    if not _env_bool("PROJECT_TASK_SYNC_ENABLED", "0"):
+        return
+
+    url = os.environ.get(
+        "PROJECT_TASK_UPDATE_API_URL",
+        os.environ.get("PROJECT_TASK_API_URL", "https://react.nts.nl/documents/api/v1/tasks"),
+    )
+    method = os.environ.get("PROJECT_TASK_UPDATE_API_METHOD", "PUT").upper()
+    timeout = _env_int("PROJECT_TASK_API_TIMEOUT") or 10
+    verify_ssl = _env_bool("PROJECT_TASK_API_VERIFY_SSL", "1")
+
+    payload = _build_project_task_payload(
+        issue_data=issue_data,
+        requested_data=requested_data,
+        actor_id=actor_id,
+        actor_contact_id=actor_contact_id,
+    )
+
+    try:
+        _send_project_task_request(
+            url=url,
+            method=method,
+            payload=payload,
+            timeout=timeout,
+            verify_ssl=verify_ssl,
+            action="update",
+        )
     except requests.RequestException as exc:
         log_exception(exc, warning=True)
         raise self.retry(exc=exc, countdown=30)
