@@ -8,6 +8,7 @@ import os
 
 import requests
 from celery import shared_task
+from django.utils import timezone
 
 from plane.utils.exception_logger import log_exception
 
@@ -48,7 +49,7 @@ def _first_present(*values):
 
 def _with_default_time(value, default_time):
     if not value:
-        return default_time
+        return f"{timezone.localdate().isoformat()} {default_time}"
 
     value = str(value)
     if "T" in value or " " in value:
