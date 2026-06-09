@@ -48,7 +48,7 @@ def _first_present(*values):
 
 def _with_default_time(value, default_time):
     if not value:
-        return None
+        return default_time
 
     value = str(value)
     if "T" in value or " " in value:
@@ -58,12 +58,14 @@ def _with_default_time(value, default_time):
 
 
 def _build_project_task_payload(issue_data, requested_data, actor_id):
+    title = _first_present(requested_data.get("name"), issue_data.get("name"), "")
+    description = _first_present(requested_data.get("description_html"), issue_data.get("description_html"), title)
     start_date = _first_present(requested_data.get("start_date"), issue_data.get("start_date"))
     due_date = _first_present(requested_data.get("target_date"), issue_data.get("target_date"))
 
     return {
-        "title": _first_present(requested_data.get("name"), issue_data.get("name"), ""),
-        "description": _first_present(requested_data.get("description_html"), issue_data.get("description_html"), ""),
+        "title": title,
+        "description": description,
         "startDate": _with_default_time(start_date, "09:00:00"),
         "dueDate": _with_default_time(due_date, "17:00:00"),
         "priority": _first_present(requested_data.get("priority"), issue_data.get("priority"), "none"),
