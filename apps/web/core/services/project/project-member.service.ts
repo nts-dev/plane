@@ -6,7 +6,7 @@
 
 // types
 import { API_BASE_URL } from "@plane/constants";
-import type { IProjectBulkAddFormData, TProjectMembership } from "@plane/types";
+import type { IProjectBulkAddFormData, IWorkspaceMember, TProjectMembership } from "@plane/types";
 // services
 import { APIService } from "@/services/api.service";
 
@@ -17,6 +17,14 @@ export class ProjectMemberService extends APIService {
 
   async fetchProjectMembers(workspaceSlug: string, projectId: string): Promise<TProjectMembership[]> {
     return this.get(`/api/workspaces/${workspaceSlug}/projects/${projectId}/members/`)
+      .then((response) => response?.data)
+      .catch((error) => {
+        throw error?.response?.data;
+      });
+  }
+
+  async fetchProjectMemberCandidates(workspaceSlug: string, projectId: string): Promise<IWorkspaceMember[]> {
+    return this.get(`/api/workspaces/${workspaceSlug}/projects/${projectId}/members/candidates/`)
       .then((response) => response?.data)
       .catch((error) => {
         throw error?.response?.data;

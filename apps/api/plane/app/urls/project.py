@@ -80,6 +80,11 @@ urlpatterns = [
         name="project-member",
     ),
     path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/members/candidates/",
+        ProjectMemberViewSet.as_view({"get": "candidates"}),
+        name="project-member-candidates",
+    ),
+    path(
         "workspaces/<str:slug>/projects/<uuid:project_id>/members/<uuid:pk>/",
         ProjectMemberViewSet.as_view({"get": "retrieve", "patch": "partial_update", "delete": "destroy"}),
         name="project-member",

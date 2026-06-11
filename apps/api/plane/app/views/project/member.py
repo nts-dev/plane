@@ -14,11 +14,12 @@ from plane.app.serializers import (
     ProjectMemberAdminSerializer,
     ProjectMemberRoleSerializer,
     ProjectMemberPreferenceSerializer,
+    UserLiteSerializer,
 )
 
 from plane.app.permissions import WorkspaceUserPermission
 
-from plane.db.models import Project, ProjectMember, ProjectUserProperty, WorkspaceMember
+from plane.db.models import Project, ProjectMember, ProjectUserProperty, User, WorkspaceMember
 from plane.bgtasks.project_add_user_email_task import project_add_user_email
 from plane.utils.host import base_host
 from plane.app.permissions.base import allow_permission, ROLE
@@ -44,6 +45,38 @@ class ProjectMemberViewSet(BaseViewSet):
         )
 
     @allow_permission([ROLE.ADMIN])
+    def candidates(self, request, slug, project_id):
+        project_member_ids = ProjectMember.objects.filter(
+            workspace__slug=slug,
+            project_id=project_id,
+            is_active=True,
+        ).values_list("member_id", flat=True)
+
+        users = User.objects.filter(is_bot=False).exclude(id__in=project_member_ids).order_by(
+            "display_name", "first_name", "last_name"
+        )
+
+        workspace_members = {
+            str(workspace_member.member_id): workspace_member
+            for workspace_member in WorkspaceMember.objects.filter(workspace__slug=slug, member__in=users)
+        }
+
+        candidates = []
+        for user in users:
+            user_data = UserLiteSerializer(user).data
+            workspace_member = workspace_members.get(str(user.id))
+            candidates.append(
+                {
+                    "id": str(workspace_member.id if workspace_member else user.id),
+                    "member": user_data,
+                    "role": workspace_member.role if workspace_member else ROLE.GUEST.value,
+                    "is_active": workspace_member.is_active if workspace_member else False,
+                }
+            )
+
+        return Response(candidates, status=status.HTTP_200_OK)
+
+    @allow_permission([ROLE.ADMIN])
     def create(self, request, slug, project_id):
         # Get the list of members to be added to the project and their roles i.e. the user_id and the role
         members = request.data.get("members", [])
@@ -65,22 +98,45 @@ class ProjectMemberViewSet(BaseViewSet):
         # Create a dictionary of the member_id and their roles
         member_roles = {member.get("member_id"): member.get("role") for member in members}
 
-        # check the workspace role of the new user
-        for member in member_roles:
-            workspace_member_role = WorkspaceMember.objects.get(
-                workspace__slug=slug, member=member, is_active=True
-            ).role
-            if workspace_member_role in [20] and member_roles.get(member) in [5, 15]:
-                return Response(
-                    {"error": "You cannot add a user with role lower than the workspace role"},
-                    status=status.HTTP_400_BAD_REQUEST,
+        requested_member_ids = [member.get("member_id") for member in members]
+        valid_member_ids = set(
+            str(user_id) for user_id in User.objects.filter(id__in=requested_member_ids, is_bot=False).values_list("id", flat=True)
+        )
+        invalid_member_ids = [member_id for member_id in requested_member_ids if str(member_id) not in valid_member_ids]
+        if invalid_member_ids:
+            return Response(
+                {"error": "One or more selected users are invalid", "users": invalid_member_ids},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        existing_workspace_members = {
+            str(workspace_member.member_id): workspace_member
+            for workspace_member in WorkspaceMember.objects.filter(workspace__slug=slug, member_id__in=requested_member_ids)
+        }
+        workspace_members_to_create = []
+        workspace_members_to_update = []
+
+        for member_id, role in member_roles.items():
+            workspace_member = existing_workspace_members.get(str(member_id))
+            if workspace_member:
+                workspace_member.is_active = True
+                if int(workspace_member.role) < int(role):
+                    workspace_member.role = role
+                workspace_members_to_update.append(workspace_member)
+            else:
+                workspace_members_to_create.append(
+                    WorkspaceMember(
+                        workspace_id=project.workspace_id,
+                        member_id=member_id,
+                        role=role,
+                        is_active=True,
+                    )
                 )
 
-            if workspace_member_role in [5] and member_roles.get(member) in [15, 20]:
-                return Response(
-                    {"error": "You cannot add a user with role higher than the workspace role"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+        if workspace_members_to_create:
+            WorkspaceMember.objects.bulk_create(workspace_members_to_create, batch_size=100, ignore_conflicts=True)
+        if workspace_members_to_update:
+            WorkspaceMember.objects.bulk_update(workspace_members_to_update, ["is_active", "role"], batch_size=100)
 
         # Update roles in the members array based on the member_roles dictionary and set is_active to True
         for project_member in ProjectMember.objects.filter(

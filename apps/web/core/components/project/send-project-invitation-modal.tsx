@@ -4,7 +4,8 @@
  * See the LICENSE file for details.
  */
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { runInAction } from "mobx";
 import { observer } from "mobx-react";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
 // plane imports
@@ -14,11 +15,13 @@ import { Button } from "@plane/propel/button";
 import { PlusIcon, CloseIcon, ChevronDownIcon } from "@plane/propel/icons";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import { Avatar, CustomSelect, CustomSearchSelect, EModalPosition, EModalWidth, ModalCore } from "@plane/ui";
+import type { IWorkspaceMember } from "@plane/types";
 // helpers
 import { getFileURL } from "@plane/utils";
 // hooks
 import { useMember } from "@/hooks/store/use-member";
 import { useUserPermissions } from "@/hooks/store/user";
+import projectMemberService from "@/services/project/project-member.service";
 
 type Props = {
   isOpen: boolean;
@@ -50,11 +53,13 @@ export const SendProjectInvitationModal = observer(function SendProjectInvitatio
   const { isOpen, onClose, onSuccess, projectId, workspaceSlug } = props;
   // plane hooks
   const { t } = useTranslation();
+  const [candidateMembers, setCandidateMembers] = useState<IWorkspaceMember[]>([]);
   // store hooks
   const { getProjectRoleByWorkspaceSlugAndProjectId } = useUserPermissions();
   const {
+    memberMap,
     project: { getProjectMemberDetails, bulkAddMembersToProject },
-    workspace: { workspaceMemberIds, getWorkspaceMemberDetails },
+    workspace: { getWorkspaceMemberDetails },
   } = useMember();
   // form info
   const {
@@ -71,11 +76,15 @@ export const SendProjectInvitationModal = observer(function SendProjectInvitatio
   });
   // derived values
   const currentProjectRole = getProjectRoleByWorkspaceSlugAndProjectId(workspaceSlug, projectId);
-  const uninvitedPeople = workspaceMemberIds?.filter((userId) => {
-    const projectMemberDetails = getProjectMemberDetails(userId, projectId);
-    const isInvited = projectMemberDetails?.member.id && projectMemberDetails?.original_role;
-    return !isInvited;
-  });
+  const getCandidateMemberDetails = (userId: string) =>
+    candidateMembers.find((candidate) => candidate.member.id === userId) ?? getWorkspaceMemberDetails(userId);
+  const uninvitedPeople = candidateMembers
+    .map((candidate) => candidate.member.id)
+    .filter((userId) => {
+      const projectMemberDetails = getProjectMemberDetails(userId, projectId);
+      const isInvited = projectMemberDetails?.member.id && projectMemberDetails?.original_role;
+      return !isInvited;
+    });
 
   const onSubmit = async (formData: FormValues) => {
     if (!workspaceSlug || !projectId || isSubmitting) return;
@@ -91,6 +100,7 @@ export const SendProjectInvitationModal = observer(function SendProjectInvitatio
           type: TOAST_TYPE.SUCCESS,
           message: "Members added successfully.",
         });
+        return undefined;
       })
       .catch((error) => {
         console.error(error);
@@ -127,9 +137,23 @@ export const SendProjectInvitationModal = observer(function SendProjectInvitatio
     }
   }, [fields, append]);
 
+  useEffect(() => {
+    if (!isOpen || !workspaceSlug || !projectId) return;
+
+    projectMemberService.fetchProjectMemberCandidates(workspaceSlug, projectId).then((members) => {
+      setCandidateMembers(members);
+      runInAction(() => {
+        members.forEach((candidate) => {
+          memberMap[candidate.member.id] = candidate.member;
+        });
+      });
+      return members;
+    });
+  }, [isOpen, workspaceSlug, projectId, memberMap]);
+
   const options = uninvitedPeople
     ?.map((userId) => {
-      const memberDetails = getWorkspaceMemberDetails(userId);
+      const memberDetails = getCandidateMemberDetails(userId);
 
       if (!memberDetails?.member) return;
       return {
@@ -159,7 +183,7 @@ export const SendProjectInvitationModal = observer(function SendProjectInvitatio
     | undefined;
 
   const checkCurrentOptionWorkspaceRole = (value: string) => {
-    const currentMemberWorkspaceRole = getWorkspaceMemberDetails(value)?.role;
+    const currentMemberWorkspaceRole = getCandidateMemberDetails(value)?.role;
     if (!value || !currentMemberWorkspaceRole) return ROLE;
 
     const isGuestOROwner = [EUserPermissions.ADMIN, EUserPermissions.GUEST].includes(
@@ -183,15 +207,15 @@ export const SendProjectInvitationModal = observer(function SendProjectInvitatio
           </div>
 
           <div className="mb-3 space-y-4">
-            {fields.map((field, index) => (
-              <div key={field.id} className="group mb-1 flex w-full items-start justify-between gap-x-4 text-13">
+            {fields.map((memberField, index) => (
+              <div key={memberField.id} className="group mb-1 flex w-full items-start justify-between gap-x-4 text-13">
                 <div className="flex w-full grow flex-col gap-1">
                   <Controller
                     control={control}
                     name={`members.${index}.member_id`}
                     rules={{ required: "Please select a member" }}
                     render={({ field: { value, onChange } }) => {
-                      const selectedMember = getWorkspaceMemberDetails(value);
+                      const selectedMember = getCandidateMemberDetails(value);
                       return (
                         <CustomSearchSelect
                           value={value}
@@ -214,7 +238,7 @@ export const SendProjectInvitationModal = observer(function SendProjectInvitatio
                           onChange={(val: string) => {
                             onChange(val);
                             // Update the role to the workspace role when member ID changes
-                            const workspaceMemberDetails = getWorkspaceMemberDetails(val);
+                            const workspaceMemberDetails = getCandidateMemberDetails(val);
                             const workspaceRole = workspaceMemberDetails?.role ?? 5;
                             const newValue = ROLE[workspaceRole].toUpperCase();
                             setValue(
