@@ -103,6 +103,7 @@ export class IssueStore implements IIssueStore {
     if (issue && issue?.parent && issue?.parent?.id && issue?.parent?.project_id) {
       this.issueService.retrieve(workspaceSlug, issue.parent.project_id, issue?.parent?.id).then((res) => {
         this.rootIssueDetailStore.rootIssueStore.issues.addIssue([res]);
+        return res;
       });
     }
     // assignees
@@ -162,7 +163,9 @@ export class IssueStore implements IIssueStore {
       created_at: issue?.created_at,
       updated_at: issue?.updated_at,
       start_date: issue?.start_date,
+      start_time: issue?.start_time,
       target_date: issue?.target_date,
+      target_time: issue?.target_time,
       completed_at: issue?.completed_at,
       archived_at: issue?.archived_at,
       created_by: issue?.created_by,
@@ -288,6 +291,7 @@ export class IssueStore implements IIssueStore {
     if (issue?.parent && issue?.parent?.id && issue?.parent?.project_id) {
       this.issueService.retrieve(workspaceSlug, issue.parent.project_id, issue.parent.id).then((res) => {
         this.rootIssueDetailStore.rootIssueStore.issues.addIssue([res]);
+        return res;
       });
     }
 

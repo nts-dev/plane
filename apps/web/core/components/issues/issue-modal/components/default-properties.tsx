@@ -26,6 +26,7 @@ import { PriorityDropdown } from "@/components/dropdowns/priority";
 import { StateDropdown } from "@/components/dropdowns/state/dropdown";
 import { ParentIssuesListModal } from "@/components/issues/parent-issues-list-modal";
 import { IssueLabelSelect } from "@/components/issues/select";
+import { WorkItemTimeInput } from "@/components/issues/work-item-time-input";
 // helpers
 // hooks
 import { useProjectEstimates } from "@/hooks/store/estimates";
@@ -183,6 +184,22 @@ export const IssueDefaultProperties = observer(function IssueDefaultProperties(p
       />
       <Controller
         control={control}
+        name="start_time"
+        render={({ field: { value, onChange } }) => (
+          <div className="h-7">
+            <WorkItemTimeInput
+              value={value}
+              onChange={(time) => {
+                onChange(time);
+                handleFormChange();
+              }}
+              placeholder="Start time"
+            />
+          </div>
+        )}
+      />
+      <Controller
+        control={control}
         name="target_date"
         render={({ field: { value, onChange } }) => (
           <div className="h-7">
@@ -196,6 +213,22 @@ export const IssueDefaultProperties = observer(function IssueDefaultProperties(p
               minDate={minDate ?? undefined}
               placeholder={t("due_date")}
               tabIndex={getIndex("target_date")}
+            />
+          </div>
+        )}
+      />
+      <Controller
+        control={control}
+        name="target_time"
+        render={({ field: { value, onChange } }) => (
+          <div className="h-7">
+            <WorkItemTimeInput
+              value={value}
+              onChange={(time) => {
+                onChange(time);
+                handleFormChange();
+              }}
+              placeholder="End time"
             />
           </div>
         )}

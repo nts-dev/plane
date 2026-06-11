@@ -286,6 +286,43 @@ def track_start_date(
         )
 
 
+def track_time_field(
+    requested_data,
+    current_instance,
+    issue_id,
+    project_id,
+    workspace_id,
+    actor_id,
+    issue_activities,
+    epoch,
+    field,
+    comment,
+):
+    if current_instance.get(field) != requested_data.get(field):
+        issue_activities.append(
+            IssueActivity(
+                issue_id=issue_id,
+                actor_id=actor_id,
+                verb="updated",
+                old_value=(current_instance.get(field) if current_instance.get(field) is not None else ""),
+                new_value=(requested_data.get(field) if requested_data.get(field) is not None else ""),
+                field=field,
+                project_id=project_id,
+                workspace_id=workspace_id,
+                comment=comment,
+                epoch=epoch,
+            )
+        )
+
+
+def track_start_time(*args):
+    track_time_field(*args, field="start_time", comment="updated the start time to")
+
+
+def track_target_time(*args):
+    track_time_field(*args, field="target_time", comment="updated the end time to")
+
+
 # Track changes in issue labels
 def track_labels(
     requested_data,
@@ -608,7 +645,9 @@ def update_issue_activity(
         "state_id": track_state,
         "description_html": track_description,
         "target_date": track_target_date,
+        "target_time": track_target_time,
         "start_date": track_start_date,
+        "start_time": track_start_time,
         "label_ids": track_labels,
         "assignee_ids": track_assignees,
         "estimate_point": track_estimate_points,

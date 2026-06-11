@@ -12,6 +12,7 @@ import type { TIssue } from "@plane/types";
 // components
 import { getDate, renderFormattedPayloadDate } from "@plane/utils";
 import { DateDropdown } from "@/components/dropdowns/date";
+import { WorkItemTimeInput } from "@/components/issues/work-item-time-input";
 // helpers
 
 type Props = {
@@ -26,29 +27,47 @@ export const SpreadsheetStartDateColumn = observer(function SpreadsheetStartDate
 
   return (
     <div className="h-11 border-b-[0.5px] border-subtle">
-      <DateDropdown
-        value={issue.start_date}
-        maxDate={getDate(issue.target_date)}
-        onChange={(data) => {
-          const startDate = data ? renderFormattedPayloadDate(data) : null;
-          onChange(
-            issue,
-            { start_date: startDate },
-            {
-              changed_property: "start_date",
-              change_details: startDate,
-            }
-          );
-        }}
-        disabled={disabled}
-        placeholder="Start date"
-        icon={<StartDatePropertyIcon className="h-3 w-3 flex-shrink-0" />}
-        buttonVariant="transparent-with-text"
-        buttonClassName="text-left rounded-none group-[.selected-issue-row]:bg-accent-primary/5 group-[.selected-issue-row]:hover:bg-accent-primary/10 px-page-x"
-        buttonContainerClassName="w-full"
-        optionsClassName="z-[9]"
-        onClose={onClose}
-      />
+      <div className="flex h-full min-w-0 items-center gap-1 px-page-x">
+        <DateDropdown
+          value={issue.start_date}
+          maxDate={getDate(issue.target_date)}
+          onChange={(data) => {
+            const startDate = data ? renderFormattedPayloadDate(data) : null;
+            onChange(
+              issue,
+              { start_date: startDate },
+              {
+                changed_property: "start_date",
+                change_details: startDate,
+              }
+            );
+          }}
+          disabled={disabled}
+          placeholder="Start date"
+          icon={<StartDatePropertyIcon className="h-3 w-3 flex-shrink-0" />}
+          buttonVariant="transparent-with-text"
+          buttonClassName="rounded-none text-left group-[.selected-issue-row]:bg-accent-primary/5 group-[.selected-issue-row]:hover:bg-accent-primary/10"
+          buttonContainerClassName="min-w-0 flex-1"
+          optionsClassName="z-[9]"
+          onClose={onClose}
+        />
+        <WorkItemTimeInput
+          value={issue.start_time}
+          onChange={(startTime) =>
+            onChange(
+              issue,
+              { start_time: startTime },
+              {
+                changed_property: "start_time",
+                change_details: startTime,
+              }
+            )
+          }
+          disabled={disabled}
+          placeholder="Start time"
+          className="h-7 w-24 min-w-0 shrink-0"
+        />
+      </div>
     </div>
   );
 });

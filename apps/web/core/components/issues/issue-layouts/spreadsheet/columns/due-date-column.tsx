@@ -12,6 +12,7 @@ import type { TIssue } from "@plane/types";
 import { cn, getDate, renderFormattedPayloadDate, shouldHighlightIssueDueDate } from "@plane/utils";
 // components
 import { DateDropdown } from "@/components/dropdowns/date";
+import { WorkItemTimeInput } from "@/components/issues/work-item-time-input";
 // helpers
 // hooks
 import { useProjectState } from "@/hooks/store/use-project-state";
@@ -32,35 +33,53 @@ export const SpreadsheetDueDateColumn = observer(function SpreadsheetDueDateColu
 
   return (
     <div className="h-11 border-b-[0.5px] border-subtle">
-      <DateDropdown
-        value={issue.target_date}
-        minDate={getDate(issue.start_date)}
-        onChange={(data) => {
-          const targetDate = data ? renderFormattedPayloadDate(data) : null;
-          onChange(
-            issue,
-            { target_date: targetDate },
+      <div className="flex h-full min-w-0 items-center gap-1 px-page-x">
+        <DateDropdown
+          value={issue.target_date}
+          minDate={getDate(issue.start_date)}
+          onChange={(data) => {
+            const targetDate = data ? renderFormattedPayloadDate(data) : null;
+            onChange(
+              issue,
+              { target_date: targetDate },
+              {
+                changed_property: "target_date",
+                change_details: targetDate,
+              }
+            );
+          }}
+          disabled={disabled}
+          placeholder="Due date"
+          icon={<DueDatePropertyIcon className="h-3 w-3 flex-shrink-0" />}
+          buttonVariant="transparent-with-text"
+          buttonContainerClassName="min-w-0 flex-1"
+          buttonClassName={cn(
+            "rounded-none text-left group-[.selected-issue-row]:bg-accent-primary/5 group-[.selected-issue-row]:hover:bg-accent-primary/10",
             {
-              changed_property: "target_date",
-              change_details: targetDate,
+              "text-danger-primary": shouldHighlightIssueDueDate(issue.target_date, stateDetails?.group),
             }
-          );
-        }}
-        disabled={disabled}
-        placeholder="Due date"
-        icon={<DueDatePropertyIcon className="h-3 w-3 flex-shrink-0" />}
-        buttonVariant="transparent-with-text"
-        buttonContainerClassName="w-full"
-        buttonClassName={cn(
-          "rounded-none px-page-x text-left group-[.selected-issue-row]:bg-accent-primary/5 group-[.selected-issue-row]:hover:bg-accent-primary/10",
-          {
-            "text-danger-primary": shouldHighlightIssueDueDate(issue.target_date, stateDetails?.group),
+          )}
+          optionsClassName="z-[9]"
+          clearIconClassName="!text-primary"
+          onClose={onClose}
+        />
+        <WorkItemTimeInput
+          value={issue.target_time}
+          onChange={(targetTime) =>
+            onChange(
+              issue,
+              { target_time: targetTime },
+              {
+                changed_property: "target_time",
+                change_details: targetTime,
+              }
+            )
           }
-        )}
-        optionsClassName="z-[9]"
-        clearIconClassName="!text-primary"
-        onClose={onClose}
-      />
+          disabled={disabled}
+          placeholder="Due time"
+          className="h-7 w-24 min-w-0 shrink-0"
+        />
+      </div>
     </div>
   );
 });

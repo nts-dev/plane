@@ -23,7 +23,9 @@ export type TWorkspaceDraftIssue = {
   module_ids: string[] | undefined;
 
   start_date: string | undefined;
+  start_time?: string | undefined;
   target_date: string | undefined;
+  target_time?: string | undefined;
   completed_at: string | undefined;
 
   created_at: string;

@@ -3,6 +3,8 @@
 # See the LICENSE file for details.
 
 # Django imports
+from datetime import time
+
 from django.utils import timezone
 from lxml import html
 from django.db import IntegrityError
@@ -43,6 +45,10 @@ from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
 
 
+DEFAULT_ISSUE_START_TIME = time(9, 0)
+DEFAULT_ISSUE_TARGET_TIME = time(17, 0)
+
+
 class IssueSerializer(BaseSerializer):
     """
     Comprehensive work item serializer with full relationship management.
@@ -79,6 +85,35 @@ class IssueSerializer(BaseSerializer):
             and data.get("start_date", None) > data.get("target_date", None)
         ):
             raise serializers.ValidationError("Start date cannot exceed target date")
+
+        if "start_date" in data and data.get("start_date") is None:
+            data["start_time"] = None
+        elif data.get("start_date", getattr(self.instance, "start_date", None)) and not data.get(
+            "start_time", getattr(self.instance, "start_time", None)
+        ):
+            data["start_time"] = DEFAULT_ISSUE_START_TIME
+
+        if "target_date" in data and data.get("target_date") is None:
+            data["target_time"] = None
+        elif data.get("target_date", getattr(self.instance, "target_date", None)) and not data.get(
+            "target_time", getattr(self.instance, "target_time", None)
+        ):
+            data["target_time"] = DEFAULT_ISSUE_TARGET_TIME
+
+        start_date = data.get("start_date", getattr(self.instance, "start_date", None))
+        target_date = data.get("target_date", getattr(self.instance, "target_date", None))
+        start_time = data.get("start_time", getattr(self.instance, "start_time", None))
+        target_time = data.get("target_time", getattr(self.instance, "target_time", None))
+
+        if (
+            start_date
+            and target_date
+            and start_date == target_date
+            and start_time
+            and target_time
+            and start_time > target_time
+        ):
+            raise serializers.ValidationError("Start time cannot exceed end time when dates are the same")
 
         try:
             if data.get("description_html", None) is not None:

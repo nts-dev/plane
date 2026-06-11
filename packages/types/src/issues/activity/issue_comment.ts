@@ -90,7 +90,9 @@ export interface IssueDetail {
   description_html: string;
   priority: string;
   start_date: null;
+  start_time: null;
   target_date: null;
+  target_time: null;
   sequence_id: number;
   sort_order: number;
 }

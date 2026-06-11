@@ -19,8 +19,8 @@ import { setPromiseToast, setToast, TOAST_TYPE } from "@plane/propel/toast";
 import { Tooltip } from "@plane/propel/tooltip";
 import type { IProject } from "@plane/types";
 import type { TContextMenuItem } from "@plane/ui";
-import { Avatar, AvatarGroup, ContextMenu, FavoriteStar } from "@plane/ui";
-import { copyUrlToClipboard, cn, getFileURL, renderFormattedDate } from "@plane/utils";
+import { ContextMenu, FavoriteStar } from "@plane/ui";
+import { copyUrlToClipboard, cn, renderFormattedDate } from "@plane/utils";
 // components
 // hooks
 import { useMember } from "@/hooks/store/use-member";
@@ -278,36 +278,42 @@ export const ProjectCard = observer(function ProjectCard(props: Props) {
           </p>
           <div className="item-center flex justify-between">
             <div className="flex items-center justify-center gap-2">
-              <Tooltip
-                isMobile={isMobile}
-                tooltipHeading="Members"
-                tooltipContent={
-                  project.members && project.members.length > 0 ? `${project.members.length} Members` : "No Member"
-                }
-                position="top"
-              >
-                {projectMembersIds && projectMembersIds.length > 0 ? (
-                  <div className="flex cursor-pointer items-center gap-2 text-secondary">
-                    <AvatarGroup showTooltip={false}>
-                      {projectMembersIds.map((memberId) => {
-                        const member = getUserDetails(memberId);
-                        if (!member) return null;
-                        return (
-                          <Avatar key={member.id} name={member.display_name} src={getFileURL(member.avatar_url)} />
-                        );
-                      })}
-                    </AvatarGroup>
-                  </div>
-                ) : (
-                  <span className="text-13 text-placeholder italic">No Member Yet</span>
-                )}
-              </Tooltip>
+              {projectMembersIds && projectMembersIds.length > 0 ? (
+                <div className="flex max-w-64 cursor-pointer items-center gap-1.5 text-secondary">
+                  {projectMembersIds.slice(0, 2).map((memberId) => {
+                    const member = getUserDetails(memberId);
+                    if (!member) return null;
+                    return (
+                      <Tooltip key={member.id} isMobile={isMobile} tooltipContent={member.display_name} position="top">
+                        <span className="max-w-28 truncate rounded-sm bg-[#009688] px-2 py-0.5 text-11 font-medium text-on-color">
+                          {member.display_name}
+                        </span>
+                      </Tooltip>
+                    );
+                  })}
+                  {projectMembersIds.length > 2 && (
+                    <Tooltip
+                      isMobile={isMobile}
+                      tooltipHeading="Members"
+                      tooltipContent={`${projectMembersIds.length} Members`}
+                      position="top"
+                    >
+                      <span className="rounded-sm bg-[#009688] px-2 py-0.5 text-11 font-medium text-on-color">
+                        +{projectMembersIds.length - 2}
+                      </span>
+                    </Tooltip>
+                  )}
+                </div>
+              ) : (
+                <span className="text-13 text-placeholder italic">No Member Yet</span>
+              )}
               {isArchived && <div className="text-11 font-medium text-placeholder">Archived</div>}
             </div>
             {isArchived ? (
               hasAdminRole && (
                 <div className="flex items-center justify-center gap-2">
-                  <div
+                  <button
+                    type="button"
                     className="flex items-center justify-center text-11 font-medium text-placeholder hover:text-secondary"
                     onClick={(e) => {
                       e.preventDefault();
@@ -319,8 +325,9 @@ export const ProjectCard = observer(function ProjectCard(props: Props) {
                       <ArchiveRestoreIcon className="h-3.5 w-3.5" />
                       Restore
                     </div>
-                  </div>
-                  <div
+                  </button>
+                  <button
+                    type="button"
                     className="flex items-center justify-center text-11 font-medium text-placeholder hover:text-secondary"
                     onClick={(e) => {
                       e.preventDefault();
@@ -329,7 +336,7 @@ export const ProjectCard = observer(function ProjectCard(props: Props) {
                     }}
                   >
                     <TrashIcon className="h-3.5 w-3.5" />
-                  </div>
+                  </button>
                 </div>
               )
             ) : (

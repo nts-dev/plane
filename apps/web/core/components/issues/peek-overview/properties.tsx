@@ -30,6 +30,7 @@ import { MemberDropdown } from "@/components/dropdowns/member/dropdown";
 import { PriorityDropdown } from "@/components/dropdowns/priority";
 import { StateDropdown } from "@/components/dropdowns/state/dropdown";
 import { SidebarPropertyListItem } from "@/components/common/layout/sidebar/property-list-item";
+import { WorkItemTimeInput } from "@/components/issues/work-item-time-input";
 // helpers
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import { useMember } from "@/hooks/store/use-member";
@@ -144,23 +145,32 @@ export const PeekOverviewProperties = observer(function PeekOverviewProperties(p
         )}
 
         <SidebarPropertyListItem icon={StartDatePropertyIcon} label={t("common.order_by.start_date")}>
-          <DateDropdown
-            value={issue.start_date}
-            onChange={(val) =>
-              issueOperations.update(workspaceSlug, projectId, issueId, {
-                start_date: val ? renderFormattedPayloadDate(val) : null,
-              })
-            }
-            placeholder={t("issue.add.start_date")}
-            buttonVariant="transparent-with-text"
-            maxDate={maxDate ?? undefined}
-            disabled={disabled}
-            className="group w-full grow"
-            buttonContainerClassName="w-full text-left h-7.5"
-            buttonClassName={`text-body-xs-medium ${issue?.start_date ? "" : "text-placeholder"}`}
-            hideIcon
-            clearIconClassName="h-3 w-3 hidden group-hover:inline"
-          />
+          <div className="flex w-full items-center gap-2">
+            <DateDropdown
+              value={issue.start_date}
+              onChange={(val) =>
+                issueOperations.update(workspaceSlug, projectId, issueId, {
+                  start_date: val ? renderFormattedPayloadDate(val) : null,
+                })
+              }
+              placeholder={t("issue.add.start_date")}
+              buttonVariant="transparent-with-text"
+              maxDate={maxDate ?? undefined}
+              disabled={disabled}
+              className="group min-w-0"
+              buttonContainerClassName="w-full text-left h-7.5"
+              buttonClassName={`text-body-xs-medium ${issue?.start_date ? "" : "text-placeholder"}`}
+              hideIcon
+              clearIconClassName="h-3 w-3 hidden group-hover:inline"
+            />
+            <WorkItemTimeInput
+              value={issue.start_time}
+              onChange={(value) => issueOperations.update(workspaceSlug, projectId, issueId, { start_time: value })}
+              disabled={disabled}
+              placeholder="Start time"
+              className="h-7.5 bg-transparent text-body-xs-medium"
+            />
+          </div>
         </SidebarPropertyListItem>
 
         <SidebarPropertyListItem icon={DueDatePropertyIcon} label={t("common.order_by.due_date")}>
@@ -176,7 +186,7 @@ export const PeekOverviewProperties = observer(function PeekOverviewProperties(p
               buttonVariant="transparent-with-text"
               minDate={minDate ?? undefined}
               disabled={disabled}
-              className="group w-full grow"
+              className="group min-w-0"
               buttonContainerClassName="w-full text-left h-7.5"
               buttonClassName={cn("text-body-xs-medium", {
                 "text-placeholder": !issue.target_date,
@@ -186,6 +196,13 @@ export const PeekOverviewProperties = observer(function PeekOverviewProperties(p
               clearIconClassName="h-3 w-3 hidden group-hover:inline text-primary"
             />
             {issue.target_date && <DateAlert date={issue.target_date} workItem={issue} projectId={projectId} />}
+            <WorkItemTimeInput
+              value={issue.target_time}
+              onChange={(value) => issueOperations.update(workspaceSlug, projectId, issueId, { target_time: value })}
+              disabled={disabled}
+              placeholder="End time"
+              className="h-7.5 bg-transparent text-body-xs-medium"
+            />
           </div>
         </SidebarPropertyListItem>
 

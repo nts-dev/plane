@@ -11,16 +11,20 @@ import type { TStateGroups } from "@plane/types";
 import { cn, renderFormattedDate, shouldHighlightIssueDueDate } from "@plane/utils";
 
 type Props = {
-  startDate: string | null;
+  startDate: string | null | undefined;
+  startTime?: string | null;
   stateGroup: TStateGroups;
-  targetDate: string | null;
+  targetDate: string | null | undefined;
+  targetTime?: string | null;
 };
 
+const renderTime = (time: string | null | undefined) => (time ? ` ${time.slice(0, 5)}` : "");
+
 export function WorkItemPreviewCardDate(props: Props) {
-  const { startDate, stateGroup, targetDate } = props;
+  const { startDate, startTime, stateGroup, targetDate, targetTime } = props;
   // derived values
   const isDateRangeEnabled = Boolean(startDate && targetDate);
-  const shouldHighlightDate = shouldHighlightIssueDueDate(targetDate, stateGroup);
+  const shouldHighlightDate = shouldHighlightIssueDueDate(targetDate ?? null, stateGroup);
 
   if (!startDate && !targetDate) return null;
 
@@ -34,13 +38,18 @@ export function WorkItemPreviewCardDate(props: Props) {
         >
           <CalendarDays className="size-3 shrink-0" />
           <span>
-            {renderFormattedDate(startDate)} - {renderFormattedDate(targetDate)}
+            {renderFormattedDate(startDate)}
+            {renderTime(startTime)} - {renderFormattedDate(targetDate)}
+            {renderTime(targetTime)}
           </span>
         </div>
       ) : startDate ? (
         <div className="flex h-full items-center gap-1">
           <StartDatePropertyIcon className="size-3 shrink-0" />
-          <span>{renderFormattedDate(startDate)}</span>
+          <span>
+            {renderFormattedDate(startDate)}
+            {renderTime(startTime)}
+          </span>
         </div>
       ) : (
         <div
@@ -49,7 +58,10 @@ export function WorkItemPreviewCardDate(props: Props) {
           })}
         >
           <DueDatePropertyIcon className="size-3 shrink-0" />
-          <span>{renderFormattedDate(targetDate)}</span>
+          <span>
+            {renderFormattedDate(targetDate)}
+            {renderTime(targetTime)}
+          </span>
         </div>
       )}
     </div>

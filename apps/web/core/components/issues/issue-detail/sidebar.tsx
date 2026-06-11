@@ -29,6 +29,7 @@ import { ButtonAvatars } from "@/components/dropdowns/member/avatar";
 import { MemberDropdown } from "@/components/dropdowns/member/dropdown";
 import { PriorityDropdown } from "@/components/dropdowns/priority";
 import { StateDropdown } from "@/components/dropdowns/state/dropdown";
+import { WorkItemTimeInput } from "@/components/issues/work-item-time-input";
 // hooks
 import { useProjectEstimates } from "@/hooks/store/estimates";
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
@@ -143,23 +144,32 @@ export const IssueDetailsSidebar = observer(function IssueDetailsSidebar(props: 
             )}
 
             <SidebarPropertyListItem icon={StartDatePropertyIcon} label={t("common.order_by.start_date")}>
-              <DateDropdown
-                placeholder={t("issue.add.start_date")}
-                value={issue.start_date}
-                onChange={(val) =>
-                  issueOperations.update(workspaceSlug, projectId, issueId, {
-                    start_date: val ? renderFormattedPayloadDate(val) : null,
-                  })
-                }
-                maxDate={maxDate ?? undefined}
-                disabled={!isEditable}
-                buttonVariant="transparent-with-text"
-                className="group w-full grow"
-                buttonContainerClassName="w-full text-left h-7.5"
-                buttonClassName={`text-body-xs-regular ${issue?.start_date ? "" : "text-placeholder"}`}
-                hideIcon
-                clearIconClassName="h-3 w-3 hidden group-hover:inline"
-              />
+              <div className="flex w-full items-center gap-2">
+                <DateDropdown
+                  placeholder={t("issue.add.start_date")}
+                  value={issue.start_date}
+                  onChange={(val) =>
+                    issueOperations.update(workspaceSlug, projectId, issueId, {
+                      start_date: val ? renderFormattedPayloadDate(val) : null,
+                    })
+                  }
+                  maxDate={maxDate ?? undefined}
+                  disabled={!isEditable}
+                  buttonVariant="transparent-with-text"
+                  className="group min-w-0"
+                  buttonContainerClassName="w-full text-left h-7.5"
+                  buttonClassName={`text-body-xs-regular ${issue?.start_date ? "" : "text-placeholder"}`}
+                  hideIcon
+                  clearIconClassName="h-3 w-3 hidden group-hover:inline"
+                />
+                <WorkItemTimeInput
+                  value={issue.start_time}
+                  onChange={(value) => issueOperations.update(workspaceSlug, projectId, issueId, { start_time: value })}
+                  disabled={!isEditable}
+                  placeholder="Start time"
+                  className="h-7.5 bg-transparent text-body-xs-regular"
+                />
+              </div>
             </SidebarPropertyListItem>
 
             <SidebarPropertyListItem icon={DueDatePropertyIcon} label={t("common.order_by.due_date")}>
@@ -175,7 +185,7 @@ export const IssueDetailsSidebar = observer(function IssueDetailsSidebar(props: 
                   minDate={minDate ?? undefined}
                   disabled={!isEditable}
                   buttonVariant="transparent-with-text"
-                  className="group w-full grow"
+                  className="group min-w-0"
                   buttonContainerClassName="w-full text-left h-7.5"
                   buttonClassName={cn("text-body-xs-regular", {
                     "text-placeholder": !issue.target_date,
@@ -185,6 +195,15 @@ export const IssueDetailsSidebar = observer(function IssueDetailsSidebar(props: 
                   clearIconClassName="h-3 w-3 hidden group-hover:inline text-primary"
                 />
                 {issue.target_date && <DateAlert date={issue.target_date} workItem={issue} projectId={projectId} />}
+                <WorkItemTimeInput
+                  value={issue.target_time}
+                  onChange={(value) =>
+                    issueOperations.update(workspaceSlug, projectId, issueId, { target_time: value })
+                  }
+                  disabled={!isEditable}
+                  placeholder="End time"
+                  className="h-7.5 bg-transparent text-body-xs-regular"
+                />
               </div>
             </SidebarPropertyListItem>
 

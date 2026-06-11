@@ -3,6 +3,8 @@
 # See the LICENSE file for details.
 
 # Django imports
+from datetime import time
+
 from django.utils import timezone
 
 # Third Party imports
@@ -28,6 +30,10 @@ from plane.utils.content_validator import (
     validate_binary_data,
 )
 from plane.app.permissions import ROLE
+
+
+DEFAULT_ISSUE_START_TIME = time(9, 0)
+DEFAULT_ISSUE_TARGET_TIME = time(17, 0)
 
 
 class DraftIssueCreateSerializer(BaseSerializer):
@@ -75,6 +81,35 @@ class DraftIssueCreateSerializer(BaseSerializer):
             and attrs.get("start_date", None) > attrs.get("target_date", None)
         ):
             raise serializers.ValidationError("Start date cannot exceed target date")
+
+        if "start_date" in attrs and attrs.get("start_date") is None:
+            attrs["start_time"] = None
+        elif attrs.get("start_date", getattr(self.instance, "start_date", None)) and not attrs.get(
+            "start_time", getattr(self.instance, "start_time", None)
+        ):
+            attrs["start_time"] = DEFAULT_ISSUE_START_TIME
+
+        if "target_date" in attrs and attrs.get("target_date") is None:
+            attrs["target_time"] = None
+        elif attrs.get("target_date", getattr(self.instance, "target_date", None)) and not attrs.get(
+            "target_time", getattr(self.instance, "target_time", None)
+        ):
+            attrs["target_time"] = DEFAULT_ISSUE_TARGET_TIME
+
+        start_date = attrs.get("start_date", getattr(self.instance, "start_date", None))
+        target_date = attrs.get("target_date", getattr(self.instance, "target_date", None))
+        start_time = attrs.get("start_time", getattr(self.instance, "start_time", None))
+        target_time = attrs.get("target_time", getattr(self.instance, "target_time", None))
+
+        if (
+            start_date
+            and target_date
+            and start_date == target_date
+            and start_time
+            and target_time
+            and start_time > target_time
+        ):
+            raise serializers.ValidationError("Start time cannot exceed end time when dates are the same")
 
         # Validate description content for security
         if "description_html" in attrs and attrs["description_html"]:
@@ -317,7 +352,9 @@ class DraftIssueSerializer(BaseSerializer):
             "estimate_point",
             "priority",
             "start_date",
+            "start_time",
             "target_date",
+            "target_time",
             "project_id",
             "parent_id",
             "cycle_id",

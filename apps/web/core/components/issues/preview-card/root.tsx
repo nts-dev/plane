@@ -8,6 +8,7 @@ import { observer } from "mobx-react";
 // plane imports
 import { PriorityIcon, StateGroupIcon } from "@plane/propel/icons";
 import type { TIssue, TStateGroups } from "@plane/types";
+import { stripAndTruncateHTML } from "@plane/utils";
 // hooks
 import { useProject } from "@/hooks/store/use-project";
 import { useProjectState } from "@/hooks/store/use-project-state";
@@ -23,7 +24,19 @@ type Props = {
     id?: string;
     name?: string;
   };
-  workItem: Pick<TIssue, "id" | "name" | "sequence_id" | "priority" | "start_date" | "target_date" | "type_id">;
+  workItem: Pick<
+    TIssue,
+    | "id"
+    | "name"
+    | "sequence_id"
+    | "priority"
+    | "description_html"
+    | "start_date"
+    | "start_time"
+    | "target_date"
+    | "target_time"
+    | "type_id"
+  >;
 };
 
 export const WorkItemPreviewCard = observer(function WorkItemPreviewCard(props: Props) {
@@ -36,6 +49,7 @@ export const WorkItemPreviewCard = observer(function WorkItemPreviewCard(props: 
   const fallbackStateDetails = stateDetails.id ? getStateById(stateDetails.id) : undefined;
   const stateGroup = stateDetails?.group ?? fallbackStateDetails?.group ?? "backlog";
   const stateName = stateDetails?.name ?? fallbackStateDetails?.name;
+  const description = workItem.description_html ? stripAndTruncateHTML(workItem.description_html, 180) : "";
 
   return (
     <div className="w-72 space-y-2 rounded-lg border-[0.5px] border-strong bg-surface-1 p-3 shadow-raised-200">
@@ -55,13 +69,16 @@ export const WorkItemPreviewCard = observer(function WorkItemPreviewCard(props: 
       </div>
       <div>
         <h6 className="text-13 wrap-break-word">{workItem.name}</h6>
+        {description && <p className="mt-1 line-clamp-3 text-11 leading-4 text-secondary">{description}</p>}
       </div>
       <div className="flex h-5 items-center gap-1">
         <PriorityIcon priority={workItem.priority} withContainer />
         <WorkItemPreviewCardDate
           startDate={workItem.start_date}
+          startTime={workItem.start_time}
           stateGroup={stateGroup}
           targetDate={workItem.target_date}
+          targetTime={workItem.target_time}
         />
       </div>
     </div>

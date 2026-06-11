@@ -18,9 +18,22 @@ import { DateRangeDropdown } from "@/components/dropdowns/date-range";
 import { MemberDropdown } from "@/components/dropdowns/member/dropdown";
 import { PriorityDropdown } from "@/components/dropdowns/priority";
 import { StateDropdown } from "@/components/dropdowns/state/dropdown";
+import { WorkItemTimeInput } from "@/components/issues/work-item-time-input";
 // hooks
 import { WithDisplayPropertiesHOC } from "@/components/issues/issue-layouts/properties/with-display-properties-HOC";
 import { useProjectState } from "@/hooks/store/use-project-state";
+
+const handleEventPropagation = (e: SyntheticEvent<HTMLDivElement>) => {
+  e.stopPropagation();
+  e.preventDefault();
+};
+
+const eventPropagationProps = {
+  role: "presentation",
+  onFocus: handleEventPropagation,
+  onClick: handleEventPropagation,
+  onKeyDown: handleEventPropagation,
+};
 
 type Props = {
   workspaceSlug: string;
@@ -44,11 +57,6 @@ export const SubIssuesListItemProperties = observer(function SubIssuesListItemPr
   const { t } = useTranslation();
   const { getStateById } = useProjectState();
 
-  const handleEventPropagation = (e: SyntheticEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    e.preventDefault();
-  };
-
   const handleStartDate = (date: Date | null) => {
     if (issue.project_id) {
       updateSubIssue(workspaceSlug, issue.project_id, parentIssueId, issueId, {
@@ -61,6 +69,22 @@ export const SubIssuesListItemProperties = observer(function SubIssuesListItemPr
     if (issue.project_id) {
       updateSubIssue(workspaceSlug, issue.project_id, parentIssueId, issueId, {
         target_date: date ? renderFormattedPayloadDate(date) : null,
+      });
+    }
+  };
+
+  const handleStartTime = (value: string | null) => {
+    if (issue.project_id) {
+      updateSubIssue(workspaceSlug, issue.project_id, parentIssueId, issueId, {
+        start_time: value,
+      });
+    }
+  };
+
+  const handleTargetTime = (value: string | null) => {
+    if (issue.project_id) {
+      updateSubIssue(workspaceSlug, issue.project_id, parentIssueId, issueId, {
+        target_time: value,
       });
     }
   };
@@ -133,30 +157,46 @@ export const SubIssuesListItemProperties = observer(function SubIssuesListItemPr
         displayPropertyKey={["start_date", "due_date"]}
         shouldRenderProperty={() => isDateRangeEnabled}
       >
-        <div className="h-5" onFocus={handleEventPropagation} onClick={handleEventPropagation}>
-          <DateRangeDropdown
-            value={{
-              from: getDate(issue.start_date) || undefined,
-              to: getDate(issue.target_date) || undefined,
-            }}
-            placement="top-end"
-            onSelect={(range) => {
-              handleStartDate(range?.from ?? null);
-              handleTargetDate(range?.to ?? null);
-            }}
-            hideIcon={{
-              from: false,
-            }}
-            isClearable
-            mergeDates
-            buttonVariant={issue.start_date || issue.target_date ? "border-with-text" : "border-without-text"}
-            buttonClassName={shouldHighlight ? "text-danger-primary" : ""}
-            disabled={!canEdit}
-            showTooltip
-            customTooltipHeading="Date Range"
-            renderPlaceholder={false}
-            renderInPortal
-          />
+        <div className="h-5" {...eventPropagationProps}>
+          <div className="flex items-center gap-1">
+            <DateRangeDropdown
+              value={{
+                from: getDate(issue.start_date) || undefined,
+                to: getDate(issue.target_date) || undefined,
+              }}
+              placement="top-end"
+              onSelect={(range) => {
+                handleStartDate(range?.from ?? null);
+                handleTargetDate(range?.to ?? null);
+              }}
+              hideIcon={{
+                from: false,
+              }}
+              isClearable
+              mergeDates
+              buttonVariant={issue.start_date || issue.target_date ? "border-with-text" : "border-without-text"}
+              buttonClassName={shouldHighlight ? "text-danger-primary" : ""}
+              disabled={!canEdit}
+              showTooltip
+              customTooltipHeading="Date Range"
+              renderPlaceholder={false}
+              renderInPortal
+            />
+            <WorkItemTimeInput
+              value={issue.start_time}
+              onChange={handleStartTime}
+              disabled={!canEdit}
+              placeholder="Start time"
+              className="h-5 min-w-20 px-1"
+            />
+            <WorkItemTimeInput
+              value={issue.target_time}
+              onChange={handleTargetTime}
+              disabled={!canEdit}
+              placeholder="End time"
+              className="h-5 min-w-20 px-1"
+            />
+          </div>
         </div>
       </WithDisplayPropertiesHOC>
 
@@ -167,17 +207,26 @@ export const SubIssuesListItemProperties = observer(function SubIssuesListItemPr
         shouldRenderProperty={() => !isDateRangeEnabled}
       >
         <div className="h-5">
-          <DateDropdown
-            value={issue.start_date ?? null}
-            onChange={handleStartDate}
-            maxDate={maxDate}
-            placeholder={t("common.order_by.start_date")}
-            icon={<StartDatePropertyIcon className="h-3 w-3 flex-shrink-0" />}
-            buttonVariant={issue.start_date ? "border-with-text" : "border-without-text"}
-            optionsClassName="z-30"
-            disabled={!canEdit}
-            showTooltip
-          />
+          <div className="flex items-center gap-1">
+            <DateDropdown
+              value={issue.start_date ?? null}
+              onChange={handleStartDate}
+              maxDate={maxDate}
+              placeholder={t("common.order_by.start_date")}
+              icon={<StartDatePropertyIcon className="h-3 w-3 flex-shrink-0" />}
+              buttonVariant={issue.start_date ? "border-with-text" : "border-without-text"}
+              optionsClassName="z-30"
+              disabled={!canEdit}
+              showTooltip
+            />
+            <WorkItemTimeInput
+              value={issue.start_time}
+              onChange={handleStartTime}
+              disabled={!canEdit}
+              placeholder="Start time"
+              className="h-5 min-w-20 px-1"
+            />
+          </div>
         </div>
       </WithDisplayPropertiesHOC>
 
@@ -188,19 +237,28 @@ export const SubIssuesListItemProperties = observer(function SubIssuesListItemPr
         shouldRenderProperty={() => !isDateRangeEnabled}
       >
         <div className="h-5">
-          <DateDropdown
-            value={issue?.target_date ?? null}
-            onChange={handleTargetDate}
-            minDate={minDate}
-            placeholder={t("common.order_by.due_date")}
-            icon={<DueDatePropertyIcon className="h-3 w-3 flex-shrink-0" />}
-            buttonVariant={issue.target_date ? "border-with-text" : "border-without-text"}
-            buttonClassName={shouldHighlight ? "text-danger-primary" : ""}
-            clearIconClassName="text-primary"
-            optionsClassName="z-30"
-            disabled={!canEdit}
-            showTooltip
-          />
+          <div className="flex items-center gap-1">
+            <DateDropdown
+              value={issue?.target_date ?? null}
+              onChange={handleTargetDate}
+              minDate={minDate}
+              placeholder={t("common.order_by.due_date")}
+              icon={<DueDatePropertyIcon className="h-3 w-3 flex-shrink-0" />}
+              buttonVariant={issue.target_date ? "border-with-text" : "border-without-text"}
+              buttonClassName={shouldHighlight ? "text-danger-primary" : ""}
+              clearIconClassName="text-primary"
+              optionsClassName="z-30"
+              disabled={!canEdit}
+              showTooltip
+            />
+            <WorkItemTimeInput
+              value={issue.target_time}
+              onChange={handleTargetTime}
+              disabled={!canEdit}
+              placeholder="End time"
+              className="h-5 min-w-20 px-1"
+            />
+          </div>
         </div>
       </WithDisplayPropertiesHOC>
 

@@ -16,7 +16,9 @@ export const getUpdateFormDataForReset = (projectId: string | null | undefined, 
   description_html: formData.description_html,
   priority: formData.priority,
   start_date: formData.start_date,
+  start_time: formData.start_time,
   target_date: formData.target_date,
+  target_time: formData.target_time,
 });
 
 export const convertWorkItemDataToSearchResponse = (

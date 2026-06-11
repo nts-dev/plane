@@ -38,7 +38,9 @@ export type TIssueActivityIssueDetail = {
   description_html: string;
   priority: TIssuePriorities;
   start_date: string;
+  start_time?: string | null;
   target_date: string;
+  target_time?: string | null;
   is_draft: boolean;
 };
 

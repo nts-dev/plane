@@ -22,6 +22,7 @@ import {
   SignalMediumIcon,
   MessageSquareIcon,
   UsersIcon,
+  Clock,
 } from "lucide-react";
 import {
   BlockedIcon,
@@ -40,6 +41,8 @@ import { renderFormattedDate, generateWorkItemLink, capitalizeFirstLetter } from
 import { useLabel } from "@/hooks/store/use-label";
 import { usePlatformOS } from "@/hooks/use-platform-os";
 // types
+
+const renderWorkItemTime = (value: string | undefined | null) => (value ? value.slice(0, 5) : "");
 
 export function IssueLink({ activity }: { activity: IIssueActivity }) {
   // router params
@@ -701,6 +704,36 @@ const activityDetails: {
     },
     icon: <Calendar size={12} className="text-secondary" aria-hidden="true" />,
   },
+  start_time: {
+    message: (activity, showIssue) => {
+      if (!activity.new_value)
+        return (
+          <>
+            removed the start time
+            {showIssue && (
+              <>
+                {" "}
+                from <IssueLink activity={activity} />
+              </>
+            )}
+          </>
+        );
+      else
+        return (
+          <>
+            set the start time to{" "}
+            <span className="font-medium whitespace-nowrap text-primary">{renderWorkItemTime(activity.new_value)}</span>
+            {showIssue && (
+              <>
+                {" "}
+                for <IssueLink activity={activity} />
+              </>
+            )}
+          </>
+        );
+    },
+    icon: <Clock size={12} className="text-secondary" aria-hidden="true" />,
+  },
   target_date: {
     message: (activity, showIssue) => {
       if (!activity.new_value)
@@ -731,6 +764,36 @@ const activityDetails: {
         );
     },
     icon: <Calendar size={12} className="text-secondary" aria-hidden="true" />,
+  },
+  target_time: {
+    message: (activity, showIssue) => {
+      if (!activity.new_value)
+        return (
+          <>
+            removed the end time
+            {showIssue && (
+              <>
+                {" "}
+                from <IssueLink activity={activity} />
+              </>
+            )}
+          </>
+        );
+      else
+        return (
+          <>
+            set the end time to{" "}
+            <span className="font-medium whitespace-nowrap text-primary">{renderWorkItemTime(activity.new_value)}</span>
+            {showIssue && (
+              <>
+                {" "}
+                for <IssueLink activity={activity} />
+              </>
+            )}
+          </>
+        );
+    },
+    icon: <Clock size={12} className="text-secondary" aria-hidden="true" />,
   },
   inbox: {
     message: (activity, showIssue) => (
