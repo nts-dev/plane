@@ -37,10 +37,9 @@ class ExternalSignInAuthEndpoint(View):
             )
             return HttpResponseRedirect(url)
 
-        contact_id = request.POST.get("contact_id", False)
-        password = request.POST.get("password", False)
+        contact_id = request.POST.get("contact_id") or request.POST.get("contactId")
 
-        if not contact_id or not password:
+        if not contact_id:
             exc = AuthenticationException(
                 error_code=AUTHENTICATION_ERROR_CODES["REQUIRED_EMAIL_PASSWORD_SIGN_IN"],
                 error_message="REQUIRED_EMAIL_PASSWORD_SIGN_IN",
@@ -56,7 +55,6 @@ class ExternalSignInAuthEndpoint(View):
             provider = ExternalAuthProvider(
                 request=request,
                 contact_id=contact_id,
-                password=password,
                 callback=post_user_auth_workflow,
             )
             user = provider.authenticate()

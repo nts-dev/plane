@@ -6,6 +6,7 @@
 
 import React from "react";
 // components
+import { ExternalAutoSignIn } from "@/components/account/auth-forms/external-auto-sign-in";
 import { AuthBase } from "@/components/auth-screens/auth-base";
 // helpers
 import { EAuthModes, EPageTypes } from "@/helpers/authentication.helper";
@@ -18,6 +19,7 @@ function HomePage() {
   return (
     <DefaultLayout>
       <AuthenticationWrapper pageType={EPageTypes.NON_AUTHENTICATED}>
+        <ExternalAutoSignIn />
         <AuthBase authType={EAuthModes.SIGN_IN} />
       </AuthenticationWrapper>
     </DefaultLayout>

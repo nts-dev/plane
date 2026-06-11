@@ -35,7 +35,7 @@ class ExternalAuthProvider(CredentialAdapter):
         ]
 
     def set_user_data(self):
-        if not self.contact_id or not self.code:
+        if not self.contact_id:
             raise AuthenticationException(
                 error_code=AUTHENTICATION_ERROR_CODES["REQUIRED_EMAIL_PASSWORD_SIGN_IN"],
                 error_message="REQUIRED_EMAIL_PASSWORD_SIGN_IN",
@@ -52,7 +52,7 @@ class ExternalAuthProvider(CredentialAdapter):
         try:
             response = requests.post(
                 self.login_url,
-                json={"contactId": contact_id, "pass": self.code},
+                json={"contactId": contact_id},
                 timeout=self.timeout,
                 verify=self.ca_bundle or self.verify_ssl,
             )

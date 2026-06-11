@@ -114,9 +114,10 @@ export const AuthPasswordForm = observer(function AuthPasswordForm(props: Props)
   const isButtonDisabled = useMemo(
     () =>
       isSubmitting ||
-      (isExternalAuthEnabled && !passwordFormData.email) ||
-      !passwordFormData.password ||
-      (mode === EAuthModes.SIGN_UP && passwordFormData.password !== passwordFormData.confirm_password),
+      (isExternalAuthEnabled
+        ? !passwordFormData.email
+        : !passwordFormData.password ||
+          (mode === EAuthModes.SIGN_UP && passwordFormData.password !== passwordFormData.confirm_password)),
     [
       isExternalAuthEnabled,
       isSubmitting,
@@ -214,40 +215,44 @@ export const AuthPasswordForm = observer(function AuthPasswordForm(props: Props)
           </div>
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="password" className="text-13 font-medium text-tertiary">
-            {mode === EAuthModes.SIGN_IN ? t("auth.common.password.label") : t("auth.common.password.set_password")}
-          </label>
-          <div className="relative flex items-center rounded-md bg-surface-1">
-            <Input
-              type={showPassword?.password ? "text" : "password"}
-              id="password"
-              name="password"
-              value={passwordFormData.password}
-              onChange={(e) => handleFormChange("password", e.target.value)}
-              placeholder={t("auth.common.password.placeholder")}
-              className="h-10 w-full border border-strong !bg-surface-1 pr-12 disable-autofill-style placeholder:text-placeholder"
-              onFocus={() => setIsPasswordInputFocused(true)}
-              onBlur={() => setIsPasswordInputFocused(false)}
-              autoComplete="off"
-            />
-            <button
-              type="button"
-              onClick={() => handleShowPassword("password")}
-              className="absolute right-3 grid size-5 place-items-center"
-              aria-label={t(
-                showPassword?.password ? "aria_labels.auth_forms.hide_password" : "aria_labels.auth_forms.show_password"
-              )}
-            >
-              {showPassword?.password ? (
-                <EyeOff className="size-5 stroke-placeholder" />
-              ) : (
-                <Eye className="size-5 stroke-placeholder" />
-              )}
-            </button>
+        {!isExternalAuthEnabled && (
+          <div className="space-y-1">
+            <label htmlFor="password" className="text-13 font-medium text-tertiary">
+              {mode === EAuthModes.SIGN_IN ? t("auth.common.password.label") : t("auth.common.password.set_password")}
+            </label>
+            <div className="relative flex items-center rounded-md bg-surface-1">
+              <Input
+                type={showPassword?.password ? "text" : "password"}
+                id="password"
+                name="password"
+                value={passwordFormData.password}
+                onChange={(e) => handleFormChange("password", e.target.value)}
+                placeholder={t("auth.common.password.placeholder")}
+                className="h-10 w-full border border-strong !bg-surface-1 pr-12 disable-autofill-style placeholder:text-placeholder"
+                onFocus={() => setIsPasswordInputFocused(true)}
+                onBlur={() => setIsPasswordInputFocused(false)}
+                autoComplete="off"
+              />
+              <button
+                type="button"
+                onClick={() => handleShowPassword("password")}
+                className="absolute right-3 grid size-5 place-items-center"
+                aria-label={t(
+                  showPassword?.password
+                    ? "aria_labels.auth_forms.hide_password"
+                    : "aria_labels.auth_forms.show_password"
+                )}
+              >
+                {showPassword?.password ? (
+                  <EyeOff className="size-5 stroke-placeholder" />
+                ) : (
+                  <Eye className="size-5 stroke-placeholder" />
+                )}
+              </button>
+            </div>
+            {passwordSupport}
           </div>
-          {passwordSupport}
-        </div>
+        )}
 
         {mode === EAuthModes.SIGN_UP && (
           <div className="space-y-1">
