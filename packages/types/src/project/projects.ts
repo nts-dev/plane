@@ -8,7 +8,7 @@ import type { TLogoProps } from "../common";
 import type { TUserPermissions } from "../enums";
 import type { TStateGroups } from "../state";
 import type { IUser, IUserLite } from "../users";
-import type { IWorkspace } from "../workspace";
+import type { IWorkspace, IWorkspaceLite } from "../workspace";
 
 export enum EUserProjectRoles {
   ADMIN = 20,
@@ -25,6 +25,7 @@ export interface IPartialProject {
   member_role?: TUserPermissions | EUserProjectRoles | null;
   archived_at: string | null;
   workspace: IWorkspace | string;
+  workspace_detail?: IWorkspaceLite;
   cycle_view: boolean;
   issue_views_view: boolean;
   module_view: boolean;

@@ -85,12 +85,16 @@ export const ExtendedProjectSidebar = observer(function ExtendedProjectSidebar()
   const handleClose = useCallback(() => toggleExtendedProjectSidebar(false), [toggleExtendedProjectSidebar]);
 
   const handleCopyText = (projectId: string) => {
-    copyUrlToClipboard(`${workspaceSlug}/projects/${projectId}/issues`).then(() => {
+    const project = getPartialProjectById(projectId);
+    const projectWorkspaceSlug = project?.workspace_detail?.slug ?? workspaceSlug;
+
+    void copyUrlToClipboard(`${projectWorkspaceSlug}/projects/${projectId}/issues`).then(() => {
       setToast({
         type: TOAST_TYPE.SUCCESS,
         title: t("link_copied"),
         message: t("project_link_copied_to_clipboard"),
       });
+      return undefined;
     });
   };
   return (
@@ -134,7 +138,6 @@ export const ExtendedProjectSidebar = observer(function ExtendedProjectSidebar()
               className="w-full max-w-[234px] border-none bg-transparent text-13 outline-none placeholder:text-placeholder"
               placeholder={t("search")}
               value={searchQuery}
-              autoFocus
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>

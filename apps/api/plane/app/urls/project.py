@@ -33,6 +33,11 @@ urlpatterns = [
         name="project",
     ),
     path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/readonly-access/",
+        ProjectViewSet.as_view({"post": "readonly_access"}),
+        name="project-readonly-access",
+    ),
+    path(
         "workspaces/<str:slug>/projects/<uuid:pk>/",
         ProjectViewSet.as_view(
             {

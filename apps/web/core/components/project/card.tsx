@@ -8,11 +8,10 @@ import React, { useRef, useState } from "react";
 import { observer } from "mobx-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArchiveRestoreIcon, Settings, UserPlus } from "lucide-react";
+import { ArchiveRestoreIcon, Settings } from "lucide-react";
 // plane imports
 import { EUserPermissions, EUserPermissionsLevel, IS_FAVORITE_MENU_OPEN } from "@plane/constants";
 import { useLocalStorage } from "@plane/hooks";
-import { Button } from "@plane/propel/button";
 import { Logo } from "@plane/propel/emoji-icon-picker";
 import { LinkIcon, LockIcon, NewTabIcon, TrashIcon, CheckIcon } from "@plane/propel/icons";
 import { setPromiseToast, setToast, TOAST_TYPE } from "@plane/propel/toast";
@@ -25,24 +24,26 @@ import { copyUrlToClipboard, cn, renderFormattedDate } from "@plane/utils";
 // hooks
 import { useMember } from "@/hooks/store/use-member";
 import { useProject } from "@/hooks/store/use-project";
+import { useWorkspace } from "@/hooks/store/use-workspace";
 import { useUserPermissions } from "@/hooks/store/user";
 import { useAppRouter } from "@/hooks/use-app-router";
 import { usePlatformOS } from "@/hooks/use-platform-os";
+import { ProjectService } from "@/services/project";
 // local imports
 import { CoverImage } from "@/components/common/cover-image";
 import { DeleteProjectModal } from "./delete-project-modal";
-import { JoinProjectModal } from "./join-project-modal";
 import { ArchiveRestoreProjectModal } from "./archive-restore-modal";
 
 type Props = {
   project: IProject;
 };
 
+const projectService = new ProjectService();
+
 export const ProjectCard = observer(function ProjectCard(props: Props) {
   const { project } = props;
   // states
   const [deleteProjectModalOpen, setDeleteProjectModal] = useState(false);
-  const [joinProjectModalOpen, setJoinProjectModal] = useState(false);
   const [restoreProject, setRestoreProject] = useState(false);
   // refs
   const projectCardRef = useRef(null);
@@ -52,6 +53,7 @@ export const ProjectCard = observer(function ProjectCard(props: Props) {
   // store hooks
   const { getUserDetails } = useMember();
   const { addProjectToFavorites, removeProjectFromFavorites } = useProject();
+  const { getWorkspaceById } = useWorkspace();
   const { allowPermissions } = useUserPermissions();
   // hooks
   const { isMobile } = usePlatformOS();
@@ -67,6 +69,10 @@ export const ProjectCard = observer(function ProjectCard(props: Props) {
   const hasMemberRole = project.member_role === EUserPermissions.MEMBER;
   // archive
   const isArchived = !!project.archived_at;
+  const currentWorkspaceSlug = workspaceSlug?.toString() ?? "";
+  const projectWorkspace =
+    typeof project.workspace === "string" ? getWorkspaceById(project.workspace) : project.workspace;
+  const projectWorkspaceSlug = project.workspace_detail?.slug ?? projectWorkspace?.slug ?? currentWorkspaceSlug;
   // local storage
   const { setValue: toggleFavoriteMenu, storedValue: isFavoriteMenuOpen } = useLocalStorage<boolean>(
     IS_FAVORITE_MENU_OPEN,
@@ -74,9 +80,9 @@ export const ProjectCard = observer(function ProjectCard(props: Props) {
   );
 
   const handleAddToFavorites = () => {
-    if (!workspaceSlug) return;
+    if (!projectWorkspaceSlug) return;
 
-    const addToFavoritePromise = addProjectToFavorites(workspaceSlug.toString(), project.id);
+    const addToFavoritePromise = addProjectToFavorites(projectWorkspaceSlug, project.id);
     setPromiseToast(addToFavoritePromise, {
       loading: "Adding project to favorites...",
       success: {
@@ -95,9 +101,9 @@ export const ProjectCard = observer(function ProjectCard(props: Props) {
   };
 
   const handleRemoveFromFavorites = () => {
-    if (!workspaceSlug) return;
+    if (!projectWorkspaceSlug) return;
 
-    const removeFromFavoritePromise = removeProjectFromFavorites(workspaceSlug.toString(), project.id);
+    const removeFromFavoritePromise = removeProjectFromFavorites(projectWorkspaceSlug, project.id);
     setPromiseToast(removeFromFavoritePromise, {
       loading: "Removing project from favorites...",
       success: {
@@ -111,7 +117,7 @@ export const ProjectCard = observer(function ProjectCard(props: Props) {
     });
   };
 
-  const projectLink = `${workspaceSlug}/projects/${project.id}/issues`;
+  const projectLink = `${projectWorkspaceSlug}/projects/${project.id}/issues`;
   const handleCopyText = () =>
     copyUrlToClipboard(projectLink).then(() =>
       setToast({
@@ -120,22 +126,35 @@ export const ProjectCard = observer(function ProjectCard(props: Props) {
         message: "Project link copied to clipboard.",
       })
     );
+  const openProject = async () => {
+    if (isArchived || !currentWorkspaceSlug) return;
+
+    if (!isMemberOfProject) {
+      try {
+        const access = await projectService.ensureProjectReadOnlyAccess(currentWorkspaceSlug, project.id);
+        router.push(`/${access.workspace_slug}/projects/${project.id}/issues`);
+        return;
+      } catch {
+        setToast({
+          type: TOAST_TYPE.ERROR,
+          title: "Could not open project",
+          message: "Please try again.",
+        });
+        return;
+      }
+    }
+
+    router.push(`/${projectWorkspaceSlug}/projects/${project.id}/issues`);
+  };
   const handleOpenInNewTab = () => window.open(`/${projectLink}`, "_blank");
 
   const MENU_ITEMS: TContextMenuItem[] = [
     {
       key: "settings",
-      action: () => router.push(`/${workspaceSlug}/settings/projects/${project.id}`),
+      action: () => router.push(`/${projectWorkspaceSlug}/settings/projects/${project.id}`),
       title: "Settings",
       icon: Settings,
       shouldRender: !isArchived && (hasAdminRole || hasMemberRole),
-    },
-    {
-      key: "join",
-      action: () => setJoinProjectModal(true),
-      title: "Join",
-      icon: UserPlus,
-      shouldRender: !isMemberOfProject && !isArchived,
     },
     {
       key: "open-new-tab",
@@ -175,15 +194,6 @@ export const ProjectCard = observer(function ProjectCard(props: Props) {
         isOpen={deleteProjectModalOpen}
         onClose={() => setDeleteProjectModal(false)}
       />
-      {/* Join Project Modal */}
-      {workspaceSlug && (
-        <JoinProjectModal
-          workspaceSlug={workspaceSlug.toString()}
-          project={project}
-          isOpen={joinProjectModalOpen}
-          handleClose={() => setJoinProjectModal(false)}
-        />
-      )}
       {/* Restore project modal */}
       {workspaceSlug && project && (
         <ArchiveRestoreProjectModal
@@ -196,15 +206,15 @@ export const ProjectCard = observer(function ProjectCard(props: Props) {
       )}
       <Link
         ref={projectCardRef}
-        href={`/${workspaceSlug}/projects/${project.id}/issues`}
+        href={`/${projectLink}`}
         onClick={(e) => {
-          if (!isMemberOfProject || isArchived) {
+          if (isArchived || !isMemberOfProject) {
             e.preventDefault();
             e.stopPropagation();
-            if (!isArchived) setJoinProjectModal(true);
+            void openProject();
           }
         }}
-        data-prevent-progress={!isMemberOfProject || isArchived}
+        data-prevent-progress={isArchived}
         className={cn(
           "group/project-card flex w-full flex-col justify-between overflow-hidden rounded-lg border border-subtle bg-layer-2 transition-all duration-300 hover:border-strong hover:shadow-raised-200"
         )}
@@ -279,30 +289,19 @@ export const ProjectCard = observer(function ProjectCard(props: Props) {
           <div className="item-center flex justify-between">
             <div className="flex items-center justify-center gap-2">
               {projectMembersIds && projectMembersIds.length > 0 ? (
-                <div className="flex max-w-64 cursor-pointer items-center gap-1.5 text-secondary">
-                  {projectMembersIds.slice(0, 2).map((memberId) => {
+                <div className="flex min-w-0 cursor-pointer flex-wrap items-center gap-1.5 text-secondary">
+                  {projectMembersIds.map((memberId) => {
                     const member = getUserDetails(memberId);
                     if (!member) return null;
+                    const firstName = member.display_name.trim().split(/\s+/)[0] || member.display_name;
                     return (
                       <Tooltip key={member.id} isMobile={isMobile} tooltipContent={member.display_name} position="top">
-                        <span className="max-w-28 truncate rounded-sm bg-[#009688] px-2 py-0.5 text-11 font-medium text-on-color">
-                          {member.display_name}
+                        <span className="inline-flex shrink-0 rounded-sm bg-[#009688] px-2 py-0.5 text-11 font-medium whitespace-nowrap text-on-color">
+                          {firstName}
                         </span>
                       </Tooltip>
                     );
                   })}
-                  {projectMembersIds.length > 2 && (
-                    <Tooltip
-                      isMobile={isMobile}
-                      tooltipHeading="Members"
-                      tooltipContent={`${projectMembersIds.length} Members`}
-                      position="top"
-                    >
-                      <span className="rounded-sm bg-[#009688] px-2 py-0.5 text-11 font-medium text-on-color">
-                        +{projectMembersIds.length - 2}
-                      </span>
-                    </Tooltip>
-                  )}
                 </div>
               ) : (
                 <span className="text-13 text-placeholder italic">No Member Yet</span>
@@ -348,7 +347,7 @@ export const ProjectCard = observer(function ProjectCard(props: Props) {
                       onClick={(e) => {
                         e.stopPropagation();
                       }}
-                      href={`/${workspaceSlug}/settings/projects/${project.id}`}
+                      href={`/${projectWorkspaceSlug}/settings/projects/${project.id}`}
                     >
                       <Settings className="h-3.5 w-3.5" />
                     </Link>
@@ -359,19 +358,10 @@ export const ProjectCard = observer(function ProjectCard(props: Props) {
                     </span>
                   ))}
                 {!isMemberOfProject && (
-                  <div className="flex items-center">
-                    <Button
-                      variant="link"
-                      className="!p-0 font-semibold"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setJoinProjectModal(true);
-                      }}
-                    >
-                      Join
-                    </Button>
-                  </div>
+                  <span className="flex items-center gap-1 text-13 text-placeholder">
+                    <LockIcon className="h-3.5 w-3.5" />
+                    Read-only
+                  </span>
                 )}
               </>
             )}

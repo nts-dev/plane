@@ -14,6 +14,7 @@ import { CustomSearchSelect } from "@plane/ui";
 import { useProject } from "@/hooks/store/use-project";
 import { useUserPermissions } from "@/hooks/store/user";
 import { useAppRouter } from "@/hooks/use-app-router";
+import { ProjectService } from "@/services/project";
 // plane web imports
 import { useNavigationItems } from "@/plane-web/components/navigations";
 // local imports
@@ -26,6 +27,8 @@ type TProjectHeaderProps = {
   workspaceSlug: string;
   projectId: string;
 };
+
+const projectService = new ProjectService();
 
 export const ProjectHeader = observer(function ProjectHeader(props: TProjectHeaderProps) {
   const { workspaceSlug, projectId } = props;
@@ -88,12 +91,19 @@ export const ProjectHeader = observer(function ProjectHeader(props: TProjectHead
 
   // Memoize onChange handler
   const handleProjectChange = useCallback(
-    (value: string) => {
+    async (value: string) => {
       if (value !== currentProjectDetails?.id) {
-        router.push(getTabUrl(workspaceSlug, value, validatedDefaultTabKey));
+        const project = getPartialProjectById(value);
+        const projectWorkspaceSlug = project?.workspace_detail?.slug ?? workspaceSlug;
+
+        if (project && !project.member_role) {
+          await projectService.ensureProjectReadOnlyAccess(workspaceSlug, project.id);
+        }
+
+        router.push(getTabUrl(projectWorkspaceSlug, value, validatedDefaultTabKey));
       }
     },
-    [currentProjectDetails?.id, router, workspaceSlug, validatedDefaultTabKey]
+    [currentProjectDetails?.id, getPartialProjectById, router, workspaceSlug, validatedDefaultTabKey]
   );
 
   // Early return if no project details

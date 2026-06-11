@@ -34,6 +34,13 @@ import type { TProject } from "@/plane-web/types";
 // local imports
 import { SidebarProjectsListItem } from "./projects-list-item";
 
+const PROJECT_LIST_LOADER_KEYS = [
+  "project-loader-one",
+  "project-loader-two",
+  "project-loader-three",
+  "project-loader-four",
+];
+
 export const SidebarProjectsList = observer(function SidebarProjectsList() {
   // states
   const [isAllProjectsListOpen, setIsAllProjectsListOpen] = useState(true);
@@ -69,12 +76,16 @@ export const SidebarProjectsList = observer(function SidebarProjectsList() {
     projectPreferences.showLimitedProjects && joinedProjects.length > projectPreferences.limitedProjectsCount;
 
   const handleCopyText = (projectId: string) => {
-    copyUrlToClipboard(`${workspaceSlug}/projects/${projectId}/issues`).then(() => {
+    const project = getPartialProjectById(projectId);
+    const projectWorkspaceSlug = project?.workspace_detail?.slug ?? workspaceSlug;
+
+    void copyUrlToClipboard(`${projectWorkspaceSlug}/projects/${projectId}/issues`).then(() => {
       setToast({
         type: TOAST_TYPE.SUCCESS,
         title: t("link_copied"),
         message: t("project_link_copied_to_clipboard"),
       });
+      return undefined;
     });
   };
 
@@ -229,8 +240,8 @@ export const SidebarProjectsList = observer(function SidebarProjectsList() {
             >
               {loader === "init-loader" && (
                 <Loader className="w-full space-y-1.5">
-                  {Array.from({ length: 4 }).map((_, index) => (
-                    <Loader.Item key={index} height="28px" />
+                  {PROJECT_LIST_LOADER_KEYS.map((key) => (
+                    <Loader.Item key={key} height="28px" />
                   ))}
                 </Loader>
               )}

@@ -68,6 +68,17 @@ export class ProjectService extends APIService {
       });
   }
 
+  async ensureProjectReadOnlyAccess(
+    workspaceSlug: string,
+    projectId: string
+  ): Promise<{ workspace_id: string; workspace_slug: string; project_id: string; member_role: number }> {
+    return this.post(`/api/workspaces/${workspaceSlug}/projects/${projectId}/readonly-access/`)
+      .then((response) => response?.data)
+      .catch((error) => {
+        throw error?.response?.data;
+      });
+  }
+
   async getProjectAnalyticsCount(
     workspaceSlug: string,
     params?: TProjectAnalyticsCountParams

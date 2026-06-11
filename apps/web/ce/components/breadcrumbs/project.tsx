@@ -15,12 +15,21 @@ import { SwitcherLabel } from "@/components/common/switcher-label";
 import { useProject } from "@/hooks/store/use-project";
 import { useAppRouter } from "@/hooks/use-app-router";
 import type { TProject } from "@/plane-web/types";
+import { ProjectService } from "@/services/project";
 
 type TProjectBreadcrumbProps = {
   workspaceSlug: string;
   projectId: string;
   handleOnClick?: () => void;
 };
+
+const projectService = new ProjectService();
+
+const renderIcon = (projectDetails: TProject) => (
+  <span className="grid size-4 flex-shrink-0 place-items-center">
+    <Logo logo={projectDetails.logo_props} size={14} />
+  </span>
+);
 
 export const ProjectBreadcrumb = observer(function ProjectBreadcrumb(props: TProjectBreadcrumbProps) {
   const { workspaceSlug, projectId, handleOnClick } = props;
@@ -36,10 +45,10 @@ export const ProjectBreadcrumb = observer(function ProjectBreadcrumb(props: TPro
 
   // derived values
   const switcherOptions = joinedProjectIds
-    .map((projectId) => {
-      const project = getPartialProjectById(projectId);
+    .map((joinedProjectId) => {
+      const project = getPartialProjectById(joinedProjectId);
       return {
-        value: projectId,
+        value: joinedProjectId,
         query: project?.name,
         content: (
           <SwitcherLabel
@@ -53,13 +62,6 @@ export const ProjectBreadcrumb = observer(function ProjectBreadcrumb(props: TPro
     })
     .filter((option) => option !== undefined) as ICustomSearchSelectOption[];
 
-  // helpers
-  const renderIcon = (projectDetails: TProject) => (
-    <span className="grid size-4 flex-shrink-0 place-items-center">
-      <Logo logo={projectDetails.logo_props} size={14} />
-    </span>
-  );
-
   return (
     <>
       <Breadcrumbs.Item
@@ -67,14 +69,24 @@ export const ProjectBreadcrumb = observer(function ProjectBreadcrumb(props: TPro
           <BreadcrumbNavigationSearchDropdown
             selectedItem={currentProjectDetails.id}
             navigationItems={switcherOptions}
-            onChange={(value: string) => {
-              router.push(`/${workspaceSlug}/projects/${value}/issues`);
+            onChange={async (value: string) => {
+              const project = getPartialProjectById(value);
+              const projectWorkspaceSlug = project?.workspace_detail?.slug ?? workspaceSlug;
+
+              if (project && !project.member_role) {
+                await projectService.ensureProjectReadOnlyAccess(workspaceSlug, project.id);
+              }
+
+              router.push(`/${projectWorkspaceSlug}/projects/${value}/issues`);
             }}
             title={currentProjectDetails?.name}
             icon={renderIcon(currentProjectDetails)}
             handleOnClick={() => {
               if (handleOnClick) handleOnClick();
-              else router.push(`/${workspaceSlug}/projects/${currentProjectDetails.id}/issues/`);
+              else {
+                const projectWorkspaceSlug = currentProjectDetails.workspace_detail?.slug ?? workspaceSlug;
+                router.push(`/${projectWorkspaceSlug}/projects/${currentProjectDetails.id}/issues/`);
+              }
             }}
             shouldTruncate
           />

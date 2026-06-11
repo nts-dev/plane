@@ -113,6 +113,7 @@ class ProjectLiteSerializer(BaseSerializer):
 
 
 class ProjectListSerializer(DynamicBaseSerializer):
+    workspace_detail = WorkspaceLiteSerializer(source="workspace", read_only=True)
     is_favorite = serializers.BooleanField(read_only=True)
     sort_order = serializers.FloatField(read_only=True)
     member_role = serializers.IntegerField(read_only=True)

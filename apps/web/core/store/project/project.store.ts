@@ -156,16 +156,14 @@ export class ProjectStore implements IProjectStore {
    * @description returns filtered projects based on filters and search query
    */
   get filteredProjectIds() {
-    const workspaceDetails = this.rootStore.workspaceRoot.currentWorkspace;
     const {
       currentWorkspaceDisplayFilters: displayFilters,
       currentWorkspaceFilters: filters,
       searchQuery,
     } = this.rootStore.projectRoot.projectFilter;
-    if (!workspaceDetails || !displayFilters || !filters) return;
+    if (!displayFilters || !filters) return;
     let workspaceProjects = Object.values(this.projectMap).filter(
       (p) =>
-        p.workspace === workspaceDetails.id &&
         (p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           p.identifier.toLowerCase().includes(searchQuery.toLowerCase())) &&
         shouldFilterProject(p, displayFilters, filters)
@@ -175,42 +173,30 @@ export class ProjectStore implements IProjectStore {
   }
 
   /**
-   * Returns project IDs belong to the current workspace
+   * Returns all visible non-archived project IDs.
    */
   get workspaceProjectIds() {
-    const workspaceDetails = this.rootStore.workspaceRoot.currentWorkspace;
-    if (!workspaceDetails) return;
-    const workspaceProjects = Object.values(this.projectMap).filter(
-      (p) => p.workspace === workspaceDetails.id && !p.archived_at
-    );
+    const workspaceProjects = Object.values(this.projectMap).filter((p) => !p.archived_at);
     const projectIds = workspaceProjects.map((p) => p.id);
     return projectIds ?? null;
   }
 
   /**
-   * Returns archived project IDs belong to current workspace.
+   * Returns archived project IDs.
    */
   get archivedProjectIds() {
-    const currentWorkspace = this.rootStore.workspaceRoot.currentWorkspace;
-    if (!currentWorkspace) return;
-
     let projects = Object.values(this.projectMap ?? {});
     projects = sortBy(projects, "archived_at");
 
-    const projectIds = projects
-      .filter((project) => project.workspace === currentWorkspace.id && !!project.archived_at)
-      .map((project) => project.id);
+    const projectIds = projects.filter((project) => !!project.archived_at).map((project) => project.id);
     return projectIds;
   }
 
   /**
-   * Returns total project IDs belong to the current workspace
+   * Returns total project IDs.
    */
   // workspaceProjectIds + archivedProjectIds
   get totalProjectIds() {
-    const currentWorkspace = this.rootStore.workspaceRoot.currentWorkspace;
-    if (!currentWorkspace) return;
-
     const workspaceProjects = this.workspaceProjectIds ?? [];
     const archivedProjects = this.archivedProjectIds ?? [];
     return [...workspaceProjects, ...archivedProjects];
@@ -234,39 +220,25 @@ export class ProjectStore implements IProjectStore {
   }
 
   /**
-   * Returns joined project IDs belong to the current workspace
+   * Returns project IDs visible in project switchers and sidebars.
    */
   get joinedProjectIds() {
-    const currentWorkspace = this.rootStore.workspaceRoot.currentWorkspace;
-    if (!currentWorkspace) return [];
-
     let projects = Object.values(this.projectMap ?? {});
     projects = sortBy(projects, "sort_order");
 
-    const projectIds = projects
-      .filter((project) => project.workspace === currentWorkspace.id && !!project.member_role && !project.archived_at)
-      .map((project) => project.id);
+    const projectIds = projects.filter((project) => !project.archived_at).map((project) => project.id);
     return projectIds;
   }
 
   /**
-   * Returns favorite project IDs belong to the current workspace
+   * Returns favorite project IDs.
    */
   get favoriteProjectIds() {
-    const currentWorkspace = this.rootStore.workspaceRoot.currentWorkspace;
-    if (!currentWorkspace) return [];
-
     let projects = Object.values(this.projectMap ?? {});
     projects = sortBy(projects, "created_at");
 
     const projectIds = projects
-      .filter(
-        (project) =>
-          project.workspace === currentWorkspace.id &&
-          !!project.member_role &&
-          project.is_favorite &&
-          !project.archived_at
-      )
+      .filter((project) => project.is_favorite && !project.archived_at)
       .map((project) => project.id);
     return projectIds;
   }
@@ -607,6 +579,7 @@ export class ProjectStore implements IProjectStore {
           set(this.projectMap, [projectId, "archived_at"], response.archived_at);
           this.rootStore.favorite.removeFavoriteFromStore(projectId);
         });
+        return response;
       })
       .catch((error) => {
         console.log("Failed to archive project from project store");
@@ -627,6 +600,7 @@ export class ProjectStore implements IProjectStore {
         runInAction(() => {
           set(this.projectMap, [projectId, "archived_at"], null);
         });
+        return undefined;
       })
       .catch((error) => {
         console.log("Failed to restore project from project store");
