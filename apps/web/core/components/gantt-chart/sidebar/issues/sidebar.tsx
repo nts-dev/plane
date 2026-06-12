@@ -35,6 +35,10 @@ type Props = {
   showAllBlocks?: boolean;
   selectionHelpers?: TSelectionHelper;
   isEpic?: boolean;
+  collapsedIssueIds?: Set<string>;
+  issueDepthById?: Record<string, number>;
+  issueHasChildrenById?: Record<string, boolean>;
+  toggleIssueCollapse?: (issueId: string) => void;
 };
 
 export const IssueGanttSidebar = observer(function IssueGanttSidebar(props: Props) {
@@ -49,6 +53,10 @@ export const IssueGanttSidebar = observer(function IssueGanttSidebar(props: Prop
     showAllBlocks = false,
     selectionHelpers,
     isEpic = false,
+    collapsedIssueIds,
+    issueDepthById,
+    issueHasChildrenById,
+    toggleIssueCollapse,
   } = props;
 
   const { getBlockById } = useTimeLineChart(GANTT_TIMELINE_TYPE.ISSUE);
@@ -109,6 +117,10 @@ export const IssueGanttSidebar = observer(function IssueGanttSidebar(props: Prop
                       isDragging={isDragging}
                       selectionHelpers={selectionHelpers}
                       isEpic={isEpic}
+                      isCollapsed={!!collapsedIssueIds?.has(block.id)}
+                      depth={issueDepthById?.[block.id] ?? 0}
+                      hasChildren={!!issueHasChildrenById?.[block.id]}
+                      toggleCollapse={toggleIssueCollapse}
                     />
                   )}
                 </GanttDnDHOC>

@@ -4,7 +4,7 @@
  * See the LICENSE file for details.
  */
 
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 // plane imports
@@ -19,6 +19,7 @@ import { TimeLineTypeContext } from "@/components/gantt-chart/contexts";
 import { GanttChartRoot } from "@/components/gantt-chart/root";
 import { IssueGanttSidebar } from "@/components/gantt-chart/sidebar/issues/sidebar";
 // hooks
+import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import { useIssues } from "@/hooks/store/use-issues";
 import { useUserPermissions } from "@/hooks/store/user";
 import { useIssueStoreType } from "@/hooks/use-issue-layout-store";
@@ -54,6 +55,9 @@ export const BaseGanttRoot = observer(function BaseGanttRoot(props: IBaseGanttRo
   const { issues, issuesFilter } = useIssues(storeType);
   const { fetchIssues, fetchNextIssues, updateIssue, quickAddIssue } = useIssuesActions(storeType);
   const { initGantt } = useTimeLineChart(GANTT_TIMELINE_TYPE.ISSUE);
+  const {
+    issue: { getIssueById },
+  } = useIssueDetail();
   // store hooks
   const { allowPermissions } = useUserPermissions();
 
@@ -65,14 +69,15 @@ export const BaseGanttRoot = observer(function BaseGanttRoot(props: IBaseGanttRo
   targetDate.setDate(targetDate.getDate() + 1);
 
   useEffect(() => {
-    fetchIssues("init-loader", { canGroup: false, perPageCount: 100 }, viewId);
+    fetchIssues("init-loader", { canGroup: false, perPageCount: 100, includeSubIssues: true }, viewId);
   }, [fetchIssues, storeType, viewId]);
 
   useEffect(() => {
     initGantt();
-  }, []);
+  }, [initGantt]);
 
   const issuesIds = (issues.groupedIssueIds?.[ALL_ISSUES] as string[]) ?? [];
+  const [collapsedIssueIds, setCollapsedIssueIds] = useState<Set<string>>(new Set());
   const nextPageResults = issues.getPaginationData(undefined, undefined)?.nextPageResults;
 
   const { enableIssueCreation } = issues?.viewFlags || {};
@@ -81,13 +86,71 @@ export const BaseGanttRoot = observer(function BaseGanttRoot(props: IBaseGanttRo
     fetchNextIssues();
   }, [fetchNextIssues]);
 
+  const { visibleIssueIds, issueDepthById, issueHasChildrenById } = (() => {
+    const issueIdSet = new Set(issuesIds);
+    const orderByIssueId = new Map(issuesIds.map((issueId, index) => [issueId, index]));
+    const childrenByParentId = new Map<string, string[]>();
+    const rootIssueIds: string[] = [];
+
+    for (const issueId of issuesIds) {
+      const issue = getIssueById(issueId);
+      const parentId = issue?.parent_id;
+
+      if (parentId && issueIdSet.has(parentId)) {
+        const children = childrenByParentId.get(parentId) ?? [];
+        children.push(issueId);
+        childrenByParentId.set(parentId, children);
+      } else {
+        rootIssueIds.push(issueId);
+      }
+    }
+
+    const sortByOriginalOrder = (firstIssueId: string, secondIssueId: string) =>
+      (orderByIssueId.get(firstIssueId) ?? 0) - (orderByIssueId.get(secondIssueId) ?? 0);
+
+    rootIssueIds.sort(sortByOriginalOrder);
+    childrenByParentId.forEach((children) => children.sort(sortByOriginalOrder));
+
+    const flattenedIssueIds: string[] = [];
+    const depthByIssueId: Record<string, number> = {};
+    const hasChildrenByIssueId: Record<string, boolean> = {};
+
+    const appendIssue = (issueId: string, depth: number) => {
+      flattenedIssueIds.push(issueId);
+      depthByIssueId[issueId] = depth;
+
+      const childIssueIds = childrenByParentId.get(issueId) ?? [];
+      hasChildrenByIssueId[issueId] = childIssueIds.length > 0;
+
+      if (collapsedIssueIds.has(issueId)) return;
+      childIssueIds.forEach((childIssueId) => appendIssue(childIssueId, depth + 1));
+    };
+
+    rootIssueIds.forEach((issueId) => appendIssue(issueId, 0));
+
+    return {
+      visibleIssueIds: flattenedIssueIds,
+      issueDepthById: depthByIssueId,
+      issueHasChildrenById: hasChildrenByIssueId,
+    };
+  })();
+
+  const toggleIssueCollapse = useCallback((issueId: string) => {
+    setCollapsedIssueIds((currentCollapsedIssueIds) => {
+      const nextCollapsedIssueIds = new Set(currentCollapsedIssueIds);
+      if (nextCollapsedIssueIds.has(issueId)) nextCollapsedIssueIds.delete(issueId);
+      else nextCollapsedIssueIds.add(issueId);
+      return nextCollapsedIssueIds;
+    });
+  }, []);
+
   const updateIssueBlockStructure = async (issue: TIssue, data: IBlockUpdateData) => {
     if (!workspaceSlug) return;
 
     const payload: any = { ...data };
     if (data.sort_order) payload.sort_order = data.sort_order.newSortOrder;
 
-    updateIssue && (await updateIssue(issue.project_id, issue.id, payload));
+    if (updateIssue) await updateIssue(issue.project_id, issue.id, payload);
   };
 
   const isAllowed = allowPermissions([EUserPermissions.ADMIN, EUserPermissions.MEMBER], EUserPermissionsLevel.PROJECT);
@@ -106,7 +169,7 @@ export const BaseGanttRoot = observer(function BaseGanttRoot(props: IBaseGanttRo
           message: "Error while updating work item dates, Please try again Later",
         });
       }),
-    [issues, projectId, workspaceSlug]
+    [issues, projectId, t, workspaceSlug]
   );
 
   const quickAdd =
@@ -132,10 +195,29 @@ export const BaseGanttRoot = observer(function BaseGanttRoot(props: IBaseGanttRo
             border={false}
             title={isEpic ? t("epic.label", { count: 2 }) : t("issue.label", { count: 2 })}
             loaderTitle={isEpic ? t("epic.label", { count: 2 }) : t("issue.label", { count: 2 })}
-            blockIds={issuesIds}
+            blockIds={visibleIssueIds}
             blockUpdateHandler={updateIssueBlockStructure}
             blockToRender={(data: TIssue) => <IssueGanttBlock issueId={data.id} isEpic={isEpic} />}
-            sidebarToRender={(props) => <IssueGanttSidebar {...props} showAllBlocks isEpic={isEpic} />}
+            sidebarHeaderToRender={({ title }) => (
+              <div className="grid w-full grid-cols-[minmax(240px,1fr)_120px_72px_72px_72px] items-end gap-3">
+                <h6>{title}</h6>
+                <h6>Employees</h6>
+                <h6>Begin</h6>
+                <h6>End</h6>
+                <h6>{t("common.duration")}</h6>
+              </div>
+            )}
+            sidebarToRender={(sidebarProps) => (
+              <IssueGanttSidebar
+                {...sidebarProps}
+                showAllBlocks
+                isEpic={isEpic}
+                collapsedIssueIds={collapsedIssueIds}
+                issueDepthById={issueDepthById}
+                issueHasChildrenById={issueHasChildrenById}
+                toggleIssueCollapse={toggleIssueCollapse}
+              />
+            )}
             enableBlockLeftResize={isAllowed}
             enableBlockRightResize={isAllowed}
             enableBlockMove={isAllowed}

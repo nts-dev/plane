@@ -274,6 +274,49 @@ class IssueViewSet(BaseViewSet):
         # Apply legacy filters
         issue_queryset = issue_queryset.filter(**filters, **extra_filters)
 
+        if str(request.GET.get("include_sub_issues", "false")).lower() == "true":
+            filtered_issue_ids = set(issue_queryset.values_list("id", flat=True))
+            related_issue_ids = set(filtered_issue_ids)
+
+            parent_ids = set(
+                Issue.issue_objects.filter(
+                    workspace__slug=slug,
+                    project_id=project_id,
+                    id__in=filtered_issue_ids,
+                    parent_id__isnull=False,
+                ).values_list("parent_id", flat=True)
+            )
+            while parent_ids:
+                new_parent_ids = parent_ids - related_issue_ids
+                if not new_parent_ids:
+                    break
+                related_issue_ids.update(new_parent_ids)
+                parent_ids = set(
+                    Issue.issue_objects.filter(
+                        workspace__slug=slug,
+                        project_id=project_id,
+                        id__in=new_parent_ids,
+                        parent_id__isnull=False,
+                    ).values_list("parent_id", flat=True)
+                )
+
+            child_parent_ids = set(filtered_issue_ids)
+            while child_parent_ids:
+                child_ids = set(
+                    Issue.issue_objects.filter(
+                        workspace__slug=slug,
+                        project_id=project_id,
+                        parent_id__in=child_parent_ids,
+                    ).values_list("id", flat=True)
+                )
+                new_child_ids = child_ids - related_issue_ids
+                if not new_child_ids:
+                    break
+                related_issue_ids.update(new_child_ids)
+                child_parent_ids = new_child_ids
+
+            issue_queryset = self.get_queryset().filter(id__in=related_issue_ids)
+
         # Keeping a copy of the queryset before applying annotations
         filtered_issue_queryset = copy.deepcopy(issue_queryset)
 

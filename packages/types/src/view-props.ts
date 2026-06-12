@@ -86,6 +86,7 @@ export type TIssueParams =
   | "issue_type"
   | "layout"
   | "expand"
+  | "include_sub_issues"
   | "filters";
 
 export type TCalendarLayouts = "month" | "week";
@@ -263,6 +264,7 @@ export interface IssuePaginationOptions {
   groupedBy?: TIssueGroupByOptions;
   subGroupedBy?: TIssueGroupByOptions;
   orderBy?: TIssueOrderByOptions;
+  includeSubIssues?: boolean;
 }
 
 export type TSpreadsheetColumn = React.FC<{

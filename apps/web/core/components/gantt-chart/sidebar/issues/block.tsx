@@ -11,7 +11,11 @@ import { Row } from "@plane/ui";
 import { cn } from "@plane/utils";
 // components
 import { MultipleSelectEntityAction } from "@/components/core/multiple-select";
-import { IssueGanttSidebarBlock } from "@/components/issues/issue-layouts/gantt/blocks";
+import {
+  IssueGanttSidebarAssignees,
+  IssueGanttSidebarBlock,
+  IssueGanttSidebarTime,
+} from "@/components/issues/issue-layouts/gantt/blocks";
 // hooks
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import type { TSelectionHelper } from "@/hooks/use-multiple-select";
@@ -25,10 +29,24 @@ type Props = {
   isDragging: boolean;
   selectionHelpers?: TSelectionHelper;
   isEpic?: boolean;
+  depth?: number;
+  hasChildren?: boolean;
+  isCollapsed?: boolean;
+  toggleCollapse?: (issueId: string) => void;
 };
 
 export const IssuesSidebarBlock = observer(function IssuesSidebarBlock(props: Props) {
-  const { block, enableSelection, isDragging, selectionHelpers, isEpic = false } = props;
+  const {
+    block,
+    enableSelection,
+    isDragging,
+    selectionHelpers,
+    isEpic = false,
+    depth = 0,
+    hasChildren = false,
+    isCollapsed = false,
+    toggleCollapse,
+  } = props;
   // store hooks
   const { updateActiveBlockId, isBlockActive, getNumberOfDaysFromPosition } = useTimeLineChartStore();
   const { getIsIssuePeeked } = useIssueDetail();
@@ -80,17 +98,27 @@ export const IssuesSidebarBlock = observer(function IssuesSidebarBlock(props: Pr
             />
           </div>
         )}
-        <div className="flex h-full flex-grow items-center justify-between gap-2 truncate">
-          <div className="flex-grow truncate">
-            <IssueGanttSidebarBlock issueId={block.data.id} isEpic={isEpic} />
-          </div>
-          {duration && (
-            <div className="flex-shrink-0 text-13 text-secondary">
+        <div className="grid h-full min-w-0 flex-grow grid-cols-[minmax(240px,1fr)_120px_72px_72px_72px] items-center gap-3 truncate">
+          <IssueGanttSidebarBlock
+            issueId={block.data.id}
+            isEpic={isEpic}
+            depth={depth}
+            hasChildren={hasChildren}
+            isCollapsed={isCollapsed}
+            toggleCollapse={toggleCollapse}
+          />
+          <IssueGanttSidebarAssignees issueId={block.data.id} />
+          <IssueGanttSidebarTime value={block.data.start_time} />
+          <IssueGanttSidebarTime value={block.data.target_time} />
+          <div className="flex-shrink-0 text-13 text-secondary">
+            {duration ? (
               <span>
                 {duration} day{duration > 1 ? "s" : ""}
               </span>
-            </div>
-          )}
+            ) : (
+              <span className="text-placeholder">--</span>
+            )}
+          </div>
         </div>
       </Row>
     </div>

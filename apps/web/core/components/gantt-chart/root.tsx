@@ -20,6 +20,7 @@ type GanttChartRootProps = {
   blockUpdateHandler: (block: any, payload: IBlockUpdateData) => void;
   blockToRender: (data: any) => React.ReactNode;
   sidebarToRender: (props: any) => React.ReactNode;
+  sidebarHeaderToRender?: (props: { title: string }) => React.ReactNode;
   quickAdd?: React.ReactNode | undefined;
   canLoadMoreBlocks?: boolean;
   loadMoreBlocks?: () => void;
@@ -45,6 +46,7 @@ export const GanttChartRoot = observer(function GanttChartRoot(props: GanttChart
     loaderTitle = "blocks",
     blockUpdateHandler,
     sidebarToRender,
+    sidebarHeaderToRender,
     blockToRender,
     loadMoreBlocks,
     canLoadMoreBlocks,
@@ -68,7 +70,7 @@ export const GanttChartRoot = observer(function GanttChartRoot(props: GanttChart
   // update the timeline store with updated blockIds
   useEffect(() => {
     setBlockIds(blockIds);
-  }, [blockIds]);
+  }, [blockIds, setBlockIds]);
 
   return (
     <ChartViewRoot
@@ -80,6 +82,7 @@ export const GanttChartRoot = observer(function GanttChartRoot(props: GanttChart
       loaderTitle={loaderTitle}
       blockUpdateHandler={blockUpdateHandler}
       sidebarToRender={sidebarToRender}
+      sidebarHeaderToRender={sidebarHeaderToRender}
       blockToRender={blockToRender}
       enableBlockLeftResize={enableBlockLeftResize}
       enableBlockRightResize={enableBlockRightResize}

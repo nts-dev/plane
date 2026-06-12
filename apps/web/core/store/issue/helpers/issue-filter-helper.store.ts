@@ -68,8 +68,6 @@ export interface IIssueFilterHelperStore {
 }
 
 export class IssueFilterHelperStore implements IIssueFilterHelperStore {
-  constructor() {}
-
   /**
    * @description This method is used to apply the display filters on the issues
    * @param {IIssueFilters} filters
@@ -312,6 +310,8 @@ export class IssueFilterHelperStore implements IIssueFilterHelperStore {
       cursor: pageCursor,
       per_page: options.perPageCount.toString(),
     };
+
+    if (options.includeSubIssues) paginationParams.include_sub_issues = true;
 
     // If group by is specifically sent through options, like that for calendar layout, use that to group
     if (options.groupedBy) {

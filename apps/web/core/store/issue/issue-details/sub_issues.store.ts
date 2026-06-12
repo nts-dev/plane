@@ -107,7 +107,16 @@ export class IssueSubIssuesStore implements IIssueSubIssuesStore {
     return this.subIssuesStateDistribution[issueId] ?? undefined;
   };
 
-  subIssuesByIssueId = computedFn((issueId: string) => this.subIssues[issueId]);
+  subIssuesByIssueId = computedFn((issueId: string) => {
+    const explicitSubIssueIds = this.subIssues[issueId];
+    if (explicitSubIssueIds?.length) return explicitSubIssueIds;
+
+    const derivedSubIssueIds = Object.values(this.rootIssueDetailStore.rootIssueStore.issues.issuesMap)
+      .filter((issue) => issue.parent_id === issueId && !issue.archived_at)
+      .map((issue) => issue.id);
+
+    return derivedSubIssueIds.length ? derivedSubIssueIds : explicitSubIssueIds;
+  });
 
   subIssueHelpersByIssueId = (issueId: string) => ({
     preview_loader: this.subIssueHelpers?.[issueId]?.preview_loader || [],
@@ -186,10 +195,10 @@ export class IssueSubIssuesStore implements IIssueSubIssuesStore {
         });
       });
 
-      const issueIds = subIssues.map((issue) => issue.id);
+      const subIssueIds = subIssues.map((issue) => issue.id);
       update(this.subIssues, [parentIssueId], (issues) => {
-        if (!issues) return issueIds;
-        return concat(issues, issueIds);
+        if (!issues) return subIssueIds;
+        return concat(issues, subIssueIds);
       });
     });
 

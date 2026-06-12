@@ -61,7 +61,8 @@ export const SubIssuesCollapsibleContent = observer(function SubIssuesCollapsibl
   const {
     toggleCreateIssueModal,
     toggleDeleteIssueModal,
-    subIssues: { subIssueHelpersByIssueId, setSubIssueHelpers },
+    issue: { getIssueById },
+    subIssues: { subIssueHelpersByIssueId, setSubIssueHelpers, subIssuesByIssueId },
   } = useIssueDetail(issueServiceType);
 
   // helpers
@@ -85,18 +86,38 @@ export const SubIssuesCollapsibleContent = observer(function SubIssuesCollapsibl
 
   const handleFetchSubIssues = useCallback(async () => {
     const currentSubIssueHelpers = subIssueHelpersByIssueId(`${parentIssueId}_root`);
-    if (!currentSubIssueHelpers.issue_visibility.includes(parentIssueId)) {
+    const isIssueVisible = currentSubIssueHelpers.issue_visibility.includes(parentIssueId);
+    const subIssueIds = subIssuesByIssueId(parentIssueId) ?? [];
+    const hasMissingSubIssueDetails = subIssueIds.some((subIssueId) => !getIssueById(subIssueId));
+
+    if (!isIssueVisible || hasMissingSubIssueDetails) {
       try {
-        setSubIssueHelpers(`${parentIssueId}_root`, "preview_loader", parentIssueId);
+        if (!currentSubIssueHelpers.preview_loader.includes(parentIssueId))
+          setSubIssueHelpers(`${parentIssueId}_root`, "preview_loader", parentIssueId);
+
         await subIssueOperations.fetchSubIssues(workspaceSlug, projectId, parentIssueId);
-        setSubIssueHelpers(`${parentIssueId}_root`, "issue_visibility", parentIssueId);
+
+        const latestSubIssueHelpers = subIssueHelpersByIssueId(`${parentIssueId}_root`);
+        if (!latestSubIssueHelpers.issue_visibility.includes(parentIssueId))
+          setSubIssueHelpers(`${parentIssueId}_root`, "issue_visibility", parentIssueId);
       } catch (error) {
         console.error("Error fetching sub-work items:", error);
       } finally {
-        setSubIssueHelpers(`${parentIssueId}_root`, "preview_loader", "");
+        const latestSubIssueHelpers = subIssueHelpersByIssueId(`${parentIssueId}_root`);
+        if (latestSubIssueHelpers.preview_loader.includes(parentIssueId))
+          setSubIssueHelpers(`${parentIssueId}_root`, "preview_loader", parentIssueId);
       }
     }
-  }, [parentIssueId, projectId, setSubIssueHelpers, subIssueHelpersByIssueId, subIssueOperations, workspaceSlug]);
+  }, [
+    getIssueById,
+    parentIssueId,
+    projectId,
+    setSubIssueHelpers,
+    subIssueHelpersByIssueId,
+    subIssueOperations,
+    subIssuesByIssueId,
+    workspaceSlug,
+  ]);
 
   useEffect(() => {
     handleFetchSubIssues();

@@ -30,6 +30,7 @@ type ChartViewRootProps = {
   blockUpdateHandler: (block: any, payload: IBlockUpdateData) => void;
   blockToRender: (data: any) => React.ReactNode;
   sidebarToRender: (props: any) => React.ReactNode;
+  sidebarHeaderToRender?: (props: { title: string }) => React.ReactNode;
   enableBlockLeftResize: boolean | ((blockId: string) => boolean);
   enableBlockRightResize: boolean | ((blockId: string) => boolean);
   enableBlockMove: boolean | ((blockId: string) => boolean);
@@ -53,6 +54,13 @@ const timelineViewHelpers = {
   quarter: quarterView,
 };
 
+const updateCurrentLeftScrollPosition = (width: number) => {
+  const scrollContainer = document.querySelector("#gantt-container") as HTMLDivElement;
+  if (!scrollContainer) return;
+
+  scrollContainer.scrollLeft = width + scrollContainer?.scrollLeft;
+};
+
 export const ChartViewRoot = observer(function ChartViewRoot(props: ChartViewRootProps) {
   const {
     border,
@@ -62,6 +70,7 @@ export const ChartViewRoot = observer(function ChartViewRoot(props: ChartViewRoo
     loaderTitle,
     blockUpdateHandler,
     sidebarToRender,
+    sidebarHeaderToRender,
     blockToRender,
     canLoadMoreBlocks,
     enableBlockLeftResize,
@@ -152,13 +161,6 @@ export const ChartViewRoot = observer(function ChartViewRoot(props: ChartViewRoo
     setItemsContainerWidth(width + scrollContainer?.scrollLeft);
   };
 
-  const updateCurrentLeftScrollPosition = (width: number) => {
-    const scrollContainer = document.querySelector("#gantt-container") as HTMLDivElement;
-    if (!scrollContainer) return;
-
-    scrollContainer.scrollLeft = width + scrollContainer?.scrollLeft;
-  };
-
   const handleScrollToCurrentSelectedDate = (currentState: ChartDataType, date: Date) => {
     const scrollContainer = document.querySelector("#gantt-container") as HTMLDivElement;
     if (!scrollContainer) return;
@@ -211,6 +213,7 @@ export const ChartViewRoot = observer(function ChartViewRoot(props: ChartViewRoo
         itemsContainerWidth={itemsContainerWidth}
         showAllBlocks={showAllBlocks}
         sidebarToRender={sidebarToRender}
+        sidebarHeaderToRender={sidebarHeaderToRender}
         title={title}
         updateCurrentViewRenderPayload={updateCurrentViewRenderPayload}
         quickAdd={quickAdd}

@@ -27,6 +27,7 @@ type Props = {
   enableReorder: boolean | ((blockId: string) => boolean);
   enableSelection: boolean | ((blockId: string) => boolean);
   sidebarToRender: (props: any) => React.ReactNode;
+  sidebarHeaderToRender?: (props: { title: string }) => React.ReactNode;
   title: string;
   selectionHelpers: TSelectionHelper;
   showAllBlocks?: boolean;
@@ -41,6 +42,7 @@ export const GanttChartSidebar = observer(function GanttChartSidebar(props: Prop
     enableReorder,
     enableSelection,
     sidebarToRender,
+    sidebarHeaderToRender,
     loadMoreBlocks,
     canLoadMoreBlocks,
     ganttContainerRef,
@@ -68,24 +70,30 @@ export const GanttChartSidebar = observer(function GanttChartSidebar(props: Prop
           height: `${HEADER_HEIGHT}px`,
         }}
       >
-        <div className={cn("flex items-center gap-2")}>
-          {enableSelection && (
-            <div className="absolute left-1 flex w-3.5 flex-shrink-0 items-center">
-              <MultipleSelectGroupAction
-                className={cn(
-                  "pointer-events-none size-3.5 opacity-0 !outline-none group-hover/list-header:pointer-events-auto group-hover/list-header:opacity-100",
-                  {
-                    "pointer-events-auto opacity-100": !isGroupSelectionEmpty,
-                  }
-                )}
-                groupID={GANTT_SELECT_GROUP}
-                selectionHelpers={selectionHelpers}
-              />
+        {enableSelection && (
+          <div className="absolute left-1 flex w-3.5 flex-shrink-0 items-center">
+            <MultipleSelectGroupAction
+              className={cn(
+                "pointer-events-none size-3.5 opacity-0 !outline-none group-hover/list-header:pointer-events-auto group-hover/list-header:opacity-100",
+                {
+                  "pointer-events-auto opacity-100": !isGroupSelectionEmpty,
+                }
+              )}
+              groupID={GANTT_SELECT_GROUP}
+              selectionHelpers={selectionHelpers}
+            />
+          </div>
+        )}
+        {sidebarHeaderToRender ? (
+          sidebarHeaderToRender({ title })
+        ) : (
+          <>
+            <div className={cn("flex items-center gap-2")}>
+              <h6>{title}</h6>
             </div>
-          )}
-          <h6>{title}</h6>
-        </div>
-        <h6>{t("common.duration")}</h6>
+            <h6>{t("common.duration")}</h6>
+          </>
+        )}
       </Row>
 
       <Row variant={ERowVariant.HUGGING} className="h-max min-h-full bg-surface-1">

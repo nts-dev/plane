@@ -56,6 +56,7 @@ type Props = {
   itemsContainerWidth: number;
   showAllBlocks: boolean;
   sidebarToRender: (props: any) => React.ReactNode;
+  sidebarHeaderToRender?: (props: { title: string }) => React.ReactNode;
   title: string;
   updateCurrentViewRenderPayload: (
     direction: "left" | "right",
@@ -83,6 +84,7 @@ export const GanttChartMainContent = observer(function GanttChartMainContent(pro
     itemsContainerWidth,
     showAllBlocks,
     sidebarToRender,
+    sidebarHeaderToRender,
     title,
     canLoadMoreBlocks,
     updateCurrentViewRenderPayload,
@@ -110,7 +112,7 @@ export const GanttChartMainContent = observer(function GanttChartMainContent(pro
         canScroll: ({ source }) => source.data.dragInstanceId === "GANTT_REORDER",
       })
     );
-  }, [ganttContainerRef?.current]);
+  }, []);
 
   // handling scroll functionality
   const onScroll = (e: React.UIEvent<HTMLDivElement, UIEvent>) => {
@@ -194,6 +196,7 @@ export const GanttChartMainContent = observer(function GanttChartMainContent(pro
                 enableReorder={enableReorder}
                 enableSelection={enableSelection}
                 sidebarToRender={sidebarToRender}
+                sidebarHeaderToRender={sidebarHeaderToRender}
                 title={title}
                 selectionHelpers={helpers}
                 showAllBlocks={showAllBlocks}

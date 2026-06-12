@@ -6,16 +6,18 @@
 
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
+import { ChevronRight } from "lucide-react";
 // plane imports
 import { Popover } from "@plane/propel/popover";
 import { Tooltip } from "@plane/propel/tooltip";
 import { ControlLink } from "@plane/ui";
-import { findTotalDaysInRange, generateWorkItemLink } from "@plane/utils";
+import { cn, findTotalDaysInRange, generateWorkItemLink } from "@plane/utils";
 // components
 import { SIDEBAR_WIDTH } from "@/components/gantt-chart/constants";
 // hooks
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import { useIssues } from "@/hooks/store/use-issues";
+import { useMember } from "@/hooks/store/use-member";
 import { useProject } from "@/hooks/store/use-project";
 import { useProjectState } from "@/hooks/store/use-project-state";
 import { useIssueStoreType } from "@/hooks/use-issue-layout-store";
@@ -32,6 +34,10 @@ import type { GanttStoreType } from "./base-gantt-root";
 type Props = {
   issueId: string;
   isEpic?: boolean;
+  depth?: number;
+  hasChildren?: boolean;
+  isCollapsed?: boolean;
+  toggleCollapse?: (issueId: string) => void;
 };
 
 export const IssueGanttBlock = observer(function IssueGanttBlock(props: Props) {
@@ -64,9 +70,10 @@ export const IssueGanttBlock = observer(function IssueGanttBlock(props: Props) {
       <Popover.Button
         className="w-full"
         render={
-          <div
+          <button
+            type="button"
             id={`issue-${issueId}`}
-            className="space-between relative flex h-full w-full cursor-pointer items-center rounded-sm"
+            className="space-between relative flex h-full w-full cursor-pointer items-center rounded-sm text-left"
             style={blockStyle}
             onClick={handleIssuePeekOverview}
           >
@@ -84,7 +91,7 @@ export const IssueGanttBlock = observer(function IssueGanttBlock(props: Props) {
                 showProgressText={duration >= 2}
               />
             )}
-          </div>
+          </button>
         }
       />
       <Popover.Panel side="bottom" align="start">
@@ -106,7 +113,7 @@ export const IssueGanttBlock = observer(function IssueGanttBlock(props: Props) {
 
 // rendering issues on gantt sidebar
 export const IssueGanttSidebarBlock = observer(function IssueGanttSidebarBlock(props: Props) {
-  const { issueId, isEpic = false } = props;
+  const { issueId, isEpic = false, depth = 0, hasChildren = false, isCollapsed = false, toggleCollapse } = props;
   // router
   const { workspaceSlug: routerWorkspaceSlug } = useParams();
   const workspaceSlug = routerWorkspaceSlug?.toString();
@@ -149,7 +156,29 @@ export const IssueGanttSidebarBlock = observer(function IssueGanttSidebarBlock(p
       className="line-clamp-1 w-full cursor-pointer text-13 text-primary"
       disabled={!!issueDetails?.tempId}
     >
-      <div className="relative flex h-full w-full cursor-pointer items-center gap-2">
+      <div
+        className="relative flex h-full w-full cursor-pointer items-center gap-1.5"
+        style={{ paddingLeft: depth * 18 }}
+      >
+        <button
+          type="button"
+          className={cn("grid size-5 flex-shrink-0 place-items-center rounded-sm text-placeholder", {
+            "hover:bg-layer-transparent-hover hover:text-secondary": hasChildren,
+            invisible: !hasChildren,
+          })}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleCollapse?.(issueId);
+          }}
+          aria-label={isCollapsed ? "Expand sub-work items" : "Collapse sub-work items"}
+        >
+          <ChevronRight
+            className={cn("size-3 transition-transform", {
+              "rotate-90": hasChildren && !isCollapsed,
+            })}
+          />
+        </button>
         {issueDetails?.project_id && (
           <IssueIdentifier
             issueId={issueDetails.id}
@@ -166,3 +195,31 @@ export const IssueGanttSidebarBlock = observer(function IssueGanttSidebarBlock(p
     </ControlLink>
   );
 });
+
+export const IssueGanttSidebarAssignees = observer(function IssueGanttSidebarAssignees(props: { issueId: string }) {
+  const { issueId } = props;
+  const {
+    issue: { getIssueById },
+  } = useIssueDetail();
+  const { getUserDetails } = useMember();
+
+  const issueDetails = getIssueById(issueId);
+  const assigneeNames =
+    issueDetails?.assignee_ids
+      ?.map((assigneeId) => getUserDetails(assigneeId)?.display_name)
+      .filter((displayName): displayName is string => !!displayName) ?? [];
+  const label = assigneeNames.length > 0 ? assigneeNames.join(", ") : "--";
+
+  return (
+    <Tooltip tooltipContent={label}>
+      <span className="truncate text-13 text-secondary">{label}</span>
+    </Tooltip>
+  );
+});
+
+export const IssueGanttSidebarTime = (props: { value?: string | null }) => {
+  const { value } = props;
+  const timeLabel = value ? value.slice(0, 5) : "--";
+
+  return <span className="truncate text-13 text-secondary">{timeLabel}</span>;
+};
