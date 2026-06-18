@@ -113,6 +113,8 @@ class ExternalAuthProvider(CredentialAdapter):
         })
 
     def authenticate(self):
+        from plane.db.models import Account
+
         self.set_user_data()
         user = self.complete_login_or_signup()
 
@@ -122,5 +124,14 @@ class ExternalAuthProvider(CredentialAdapter):
         user.is_email_verified = True
         user.is_password_autoset = True
         user.save()
+        Account.objects.update_or_create(
+            provider=self.provider,
+            provider_account_id=str(self.user_data.get("user", {}).get("provider_id")),
+            defaults={
+                "user": user,
+                "access_token": "",
+                "refresh_token": None,
+            },
+        )
 
         return user
