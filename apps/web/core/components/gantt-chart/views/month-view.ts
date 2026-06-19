@@ -50,7 +50,7 @@ const generateMonthChart = (monthPayload: ChartDataType, side: null | "left" | "
 
   // if side is null generate months on both side of current date
   if (side === null) {
-    const currentDate = renderState.data.currentDate;
+    const currentDate = targetDate ?? renderState.data.currentDate;
 
     minusDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - range, currentDate.getDate());
     plusDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + range, currentDate.getDate());
@@ -63,6 +63,7 @@ const generateMonthChart = (monthPayload: ChartDataType, side: null | "left" | "
       ...renderState,
       data: {
         ...renderState.data,
+        currentDate,
         startDate,
         endDate,
       },
@@ -136,9 +137,11 @@ export const getMonthsBetweenTwoDates = (startDate: Date, endDate: Date): IMonth
   const todayMonth = today.getMonth();
   const todayYear = today.getFullYear();
 
-  const currentDate = new Date(startYear, startMonth);
-
-  while (currentDate <= endDate) {
+  for (
+    let currentDate = new Date(startYear, startMonth);
+    currentDate <= endDate;
+    currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1)
+  ) {
     const currentYear = currentDate.getFullYear();
     const currentMonth = currentDate.getMonth();
 
@@ -150,8 +153,6 @@ export const getMonthsBetweenTwoDates = (startDate: Date, endDate: Date): IMonth
       days: getNumberOfDaysInMonth(currentMonth, currentYear),
       today: todayMonth === currentMonth && todayYear === currentYear,
     });
-
-    currentDate.setMonth(currentDate.getMonth() + 1);
   }
 
   return monthBlocks;

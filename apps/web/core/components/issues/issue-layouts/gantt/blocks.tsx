@@ -16,20 +16,16 @@ import { cn, findTotalDaysInRange, generateWorkItemLink } from "@plane/utils";
 import { SIDEBAR_WIDTH } from "@/components/gantt-chart/constants";
 // hooks
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
-import { useIssues } from "@/hooks/store/use-issues";
 import { useMember } from "@/hooks/store/use-member";
 import { useProject } from "@/hooks/store/use-project";
 import { useProjectState } from "@/hooks/store/use-project-state";
-import { useIssueStoreType } from "@/hooks/use-issue-layout-store";
 import useIssuePeekOverviewRedirection from "@/hooks/use-issue-peek-overview-redirection";
 import { usePlatformOS } from "@/hooks/use-platform-os";
 // plane web imports
-import { IssueIdentifier } from "@/plane-web/components/issues/issue-details/issue-identifier";
 import { IssueStats } from "@/plane-web/components/issues/issue-layouts/issue-stats";
 // local imports
 import { WorkItemPreviewCard } from "../../preview-card";
 import { getBlockViewDetails } from "../utils";
-import type { GanttStoreType } from "./base-gantt-root";
 
 type Props = {
   issueId: string;
@@ -122,8 +118,6 @@ export const IssueGanttSidebarBlock = observer(function IssueGanttSidebarBlock(p
     issue: { getIssueById },
   } = useIssueDetail();
   const { isMobile } = usePlatformOS();
-  const storeType = useIssueStoreType() as GanttStoreType;
-  const { issuesFilter } = useIssues(storeType);
   const { getProjectIdentifierById } = useProject();
 
   // handlers
@@ -153,11 +147,11 @@ export const IssueGanttSidebarBlock = observer(function IssueGanttSidebarBlock(p
       id={`issue-${issueId}`}
       href={workItemLink}
       onClick={handleIssuePeekOverview}
-      className="line-clamp-1 w-full cursor-pointer text-13 text-primary"
+      className="line-clamp-1 min-w-0 cursor-pointer text-13 text-primary"
       disabled={!!issueDetails?.tempId}
     >
       <div
-        className="relative flex h-full w-full cursor-pointer items-center gap-1.5"
+        className="relative flex h-full min-w-0 cursor-pointer items-center gap-1.5"
         style={{ paddingLeft: depth * 18 }}
       >
         <button
@@ -179,15 +173,6 @@ export const IssueGanttSidebarBlock = observer(function IssueGanttSidebarBlock(p
             })}
           />
         </button>
-        {issueDetails?.project_id && (
-          <IssueIdentifier
-            issueId={issueDetails.id}
-            projectId={issueDetails.project_id}
-            size="xs"
-            variant="tertiary"
-            displayProperties={issuesFilter?.issueFilters?.displayProperties}
-          />
-        )}
         <Tooltip tooltipContent={issueDetails?.name} isMobile={isMobile}>
           <span className="flex-grow truncate text-13 font-medium">{issueDetails?.name}</span>
         </Tooltip>
@@ -208,7 +193,8 @@ export const IssueGanttSidebarAssignees = observer(function IssueGanttSidebarAss
     issueDetails?.assignee_ids
       ?.map((assigneeId) => getUserDetails(assigneeId)?.display_name)
       .filter((displayName): displayName is string => !!displayName) ?? [];
-  const label = assigneeNames.length > 0 ? assigneeNames.join(", ") : "--";
+  const firstNames = assigneeNames.map((displayName) => displayName.trim().split(/\s+/)[0]).filter(Boolean);
+  const label = firstNames.length > 0 ? firstNames.join(", ") : "--";
 
   return (
     <Tooltip tooltipContent={label}>

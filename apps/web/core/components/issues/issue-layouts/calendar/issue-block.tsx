@@ -16,18 +16,14 @@ import { ControlLink } from "@plane/ui";
 import { cn, generateWorkItemLink } from "@plane/utils";
 // hooks
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
-import { useIssues } from "@/hooks/store/use-issues";
+import { useMember } from "@/hooks/store/use-member";
 import { useProject } from "@/hooks/store/use-project";
 import { useProjectState } from "@/hooks/store/use-project-state";
-import { useIssueStoreType } from "@/hooks/use-issue-layout-store";
 import useIssuePeekOverviewRedirection from "@/hooks/use-issue-peek-overview-redirection";
 import { usePlatformOS } from "@/hooks/use-platform-os";
-// plane web components
-import { IssueIdentifier } from "@/plane-web/components/issues/issue-details/issue-identifier";
 // local components
 import { WorkItemPreviewCard } from "../../preview-card";
 import type { TRenderQuickActions } from "../list/list-view-types";
-import type { CalendarStoreType } from "./base-calendar-root";
 
 type Props = {
   issue: TIssue;
@@ -43,27 +39,39 @@ export const CalendarIssueBlock = observer(
     const [isMenuActive, setIsMenuActive] = useState(false);
     // refs
     const blockRef = useRef(null);
-    const menuActionRef = useRef<HTMLDivElement | null>(null);
+    const menuActionRef = useRef<HTMLButtonElement | null>(null);
     // hooks
     const { workspaceSlug } = useParams();
     const { getProjectStates } = useProjectState();
     const { getIsIssuePeeked } = useIssueDetail();
     const { handleRedirection } = useIssuePeekOverviewRedirection(isEpic);
     const { isMobile } = usePlatformOS();
-    const storeType = useIssueStoreType() as CalendarStoreType;
-    const { issuesFilter } = useIssues(storeType);
     const { getProjectIdentifierById } = useProject();
+    const { getUserDetails } = useMember();
 
     const stateColor = getProjectStates(issue?.project_id)?.find((state) => state?.id == issue?.state_id)?.color || "";
     const projectIdentifier = getProjectIdentifierById(issue?.project_id);
+    const assigneeNames =
+      issue.assignee_ids
+        ?.map((assigneeId) => getUserDetails(assigneeId)?.display_name)
+        .filter((displayName): displayName is string => !!displayName) ?? [];
+    const employeeLabel =
+      assigneeNames.length > 0
+        ? assigneeNames.map((displayName) => displayName.trim().split(/\s+/)[0]).join(", ")
+        : "--";
+    const startTimeLabel = issue.start_time ? issue.start_time.slice(0, 5) : "--";
+    const targetTimeLabel = issue.target_time ? issue.target_time.slice(0, 5) : "--";
+    const timeLabel = `${startTimeLabel} - ${targetTimeLabel}`;
 
     // handlers
-    const handleIssuePeekOverview = (issue: TIssue) => handleRedirection(workspaceSlug.toString(), issue, isMobile);
+    const handleIssuePeekOverview = (workItem: TIssue) =>
+      handleRedirection(workspaceSlug.toString(), workItem, isMobile);
 
     useOutsideClickDetector(menuActionRef, () => setIsMenuActive(false));
 
     const customActionButton = (
-      <div
+      <button
+        type="button"
         ref={menuActionRef}
         className={`w-full cursor-pointer rounded-sm p-1 text-placeholder hover:bg-layer-1 ${
           isMenuActive ? "bg-layer-1-active text-primary" : "text-secondary"
@@ -71,7 +79,7 @@ export const CalendarIssueBlock = observer(
         onClick={() => setIsMenuActive(!isMenuActive)}
       >
         <MoreHorizontal className="h-3.5 w-3.5" />
-      </div>
+      </button>
     );
 
     const isMenuActionRefAboveScreenBottom =
@@ -118,31 +126,28 @@ export const CalendarIssueBlock = observer(
                     }
                   )}
                 >
-                  <div className="flex h-full items-center gap-1.5 truncate">
+                  <div className="grid h-full min-w-0 flex-grow grid-cols-[2px_72px_minmax(0,1fr)_78px] items-center gap-1.5 truncate">
                     <span
-                      className="h-full w-0.5 flex-shrink-0 rounded-sm"
+                      className="h-full w-0.5 rounded-sm"
                       style={{
                         backgroundColor: stateColor,
                       }}
                     />
-                    {issue.project_id && (
-                      <IssueIdentifier
-                        issueId={issue.id}
-                        projectId={issue.project_id}
-                        size="xs"
-                        variant="tertiary"
-                        displayProperties={issuesFilter?.issueFilters?.displayProperties}
-                      />
-                    )}
-                    <div className="truncate text-13 font-medium md:text-11 md:font-regular">{issue.name}</div>
+                    <span className="truncate text-11 text-secondary">{employeeLabel}</span>
+                    <span className="truncate text-13 font-medium md:text-11 md:font-regular">{issue.name}</span>
+                    <span className="truncate text-11 text-secondary">{timeLabel}</span>
                   </div>
                   <div
+                    role="presentation"
                     className={cn("size-5 flex-shrink-0", {
                       "hidden group-hover/calendar-block:block": !isMobile,
                       block: isMenuActive,
                     })}
                     onClick={(e) => {
                       e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    onKeyDown={(e) => {
                       e.stopPropagation();
                     }}
                   >

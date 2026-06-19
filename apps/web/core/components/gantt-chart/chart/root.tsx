@@ -19,8 +19,8 @@ import { useTimeLineChartStore } from "@/hooks/use-timeline-chart";
 //
 import { SIDEBAR_WIDTH } from "../constants";
 import { currentViewDataWithView } from "../data";
-import type { IMonthBlock, IMonthView, IWeekBlock } from "../views";
-import { getNumberOfDaysBetweenTwoDates, monthView, quarterView, weekView } from "../views";
+import type { IHourBlock, IMonthBlock, IMonthView, IWeekBlock } from "../views";
+import { dayView, getNumberOfDaysBetweenTwoDates, monthView, quarterView, weekView } from "../views";
 
 type ChartViewRootProps = {
   border: boolean;
@@ -49,6 +49,7 @@ type ChartViewRootProps = {
 };
 
 const timelineViewHelpers = {
+  day: dayView,
   week: weekView,
   month: monthView,
   quarter: quarterView,
@@ -92,7 +93,6 @@ export const ChartViewRoot = observer(function ChartViewRoot(props: ChartViewRoo
   const [fullScreenMode, setFullScreenMode] = useState(false);
   // hooks
   const {
-    currentView,
     currentViewData,
     renderView,
     updateCurrentView,
@@ -115,9 +115,9 @@ export const ChartViewRoot = observer(function ChartViewRoot(props: ChartViewRoo
     const currentViewHelpers = timelineViewHelpers[selectedCurrentView];
     const currentRender = currentViewHelpers.generateChart(selectedCurrentViewData, side, targetDate, startOfWeek);
     const mergeRenderPayloads = currentViewHelpers.mergeRenderPayloads as (
-      a: IWeekBlock[] | IMonthView | IMonthBlock[],
-      b: IWeekBlock[] | IMonthView | IMonthBlock[]
-    ) => IWeekBlock[] | IMonthView | IMonthBlock[];
+      a: IHourBlock[] | IWeekBlock[] | IMonthView | IMonthBlock[],
+      b: IHourBlock[] | IWeekBlock[] | IMonthView | IMonthBlock[]
+    ) => IHourBlock[] | IWeekBlock[] | IMonthView | IMonthBlock[];
 
     // updating the prevData, currentData and nextData
     if (currentRender.payload) {
@@ -138,16 +138,17 @@ export const ChartViewRoot = observer(function ChartViewRoot(props: ChartViewRoo
         updateCurrentView(view);
         updateRenderView(currentRender.payload);
         setItemsContainerWidth(currentRender.scrollWidth);
-        setTimeout(() => {
-          handleScrollToCurrentSelectedDate(currentRender.state, currentRender.state.data.currentDate);
-        }, 50);
+        scrollToCurrentSelectedDate(currentRender.state, currentRender.state.data.currentDate);
       }
     }
 
     return currentRender.state;
   };
 
-  const handleToday = () => updateCurrentViewRenderPayload(null, currentView);
+  const handleToday = () => {
+    updateCurrentViewRenderPayload(null, "day", new Date());
+    scrollToTodayHourElement();
+  };
 
   // handling the scroll positioning from left and right
   useEffect(() => {
@@ -161,21 +162,67 @@ export const ChartViewRoot = observer(function ChartViewRoot(props: ChartViewRoo
     setItemsContainerWidth(width + scrollContainer?.scrollLeft);
   };
 
+  const getScrollLeftForDate = (currentState: ChartDataType, date: Date) => {
+    const scrollContainer = document.querySelector("#gantt-container") as HTMLDivElement;
+    if (!scrollContainer) return;
+
+    const visibleChartWidth = Math.max(scrollContainer.clientWidth - SIDEBAR_WIDTH, 0);
+    const daysDifference = Math.abs(
+      getNumberOfDaysBetweenTwoDates(new Date(currentState.data.startDate), new Date(date))
+    );
+
+    return Math.max(
+      daysDifference * currentState.data.dayWidth - visibleChartWidth / 2 + currentState.data.dayWidth / 2,
+      0
+    );
+  };
+
   const handleScrollToCurrentSelectedDate = (currentState: ChartDataType, date: Date) => {
     const scrollContainer = document.querySelector("#gantt-container") as HTMLDivElement;
     if (!scrollContainer) return;
 
-    const clientVisibleWidth: number = scrollContainer?.clientWidth;
-    let scrollWidth: number = 0;
-    let daysDifference: number = 0;
-    daysDifference = getNumberOfDaysBetweenTwoDates(currentState.data.startDate, date);
-
-    scrollWidth =
-      Math.abs(daysDifference) * currentState.data.dayWidth -
-      (clientVisibleWidth / 2 - currentState.data.dayWidth) +
-      SIDEBAR_WIDTH / 2;
+    const scrollWidth = getScrollLeftForDate(currentState, date);
+    if (scrollWidth === undefined) return;
 
     scrollContainer.scrollLeft = scrollWidth;
+  };
+
+  const scrollToCurrentSelectedDate = (currentState: ChartDataType, date: Date, attempts = 8) => {
+    requestAnimationFrame(() => {
+      const scrollContainer = document.querySelector("#gantt-container") as HTMLDivElement;
+      const scrollLeft = getScrollLeftForDate(currentState, date);
+
+      if (!scrollContainer || scrollLeft === undefined) return;
+
+      const canScrollToDate = scrollContainer.scrollWidth - scrollContainer.clientWidth >= scrollLeft;
+      if (!canScrollToDate && attempts > 0) {
+        scrollToCurrentSelectedDate(currentState, date, attempts - 1);
+        return;
+      }
+
+      handleScrollToCurrentSelectedDate(currentState, date);
+    });
+  };
+
+  const scrollToTodayHourElement = (attempts = 12) => {
+    requestAnimationFrame(() => {
+      const scrollContainer = document.querySelector("#gantt-container") as HTMLDivElement;
+      const todayHourElement = scrollContainer?.querySelector('[data-gantt-today-hour="true"]') as HTMLElement | null;
+
+      if (!scrollContainer || !todayHourElement) {
+        if (attempts > 0) scrollToTodayHourElement(attempts - 1);
+        return;
+      }
+
+      const containerRect = scrollContainer.getBoundingClientRect();
+      const hourRect = todayHourElement.getBoundingClientRect();
+      const visibleChartWidth = Math.max(scrollContainer.clientWidth - SIDEBAR_WIDTH, 0);
+      const hourOffsetFromContainer = hourRect.left - containerRect.left + scrollContainer.scrollLeft;
+      const scrollLeft =
+        hourOffsetFromContainer - SIDEBAR_WIDTH - visibleChartWidth / 2 + todayHourElement.offsetWidth / 2;
+
+      scrollContainer.scrollLeft = Math.max(scrollLeft, 0);
+    });
   };
 
   const portalContainer = document.getElementById("full-screen-portal") as HTMLElement;

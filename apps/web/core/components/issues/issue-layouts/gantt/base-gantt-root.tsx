@@ -16,6 +16,7 @@ import { EIssueLayoutTypes, GANTT_TIMELINE_TYPE } from "@plane/types";
 import { renderFormattedPayloadDate } from "@plane/utils";
 // components
 import { TimeLineTypeContext } from "@/components/gantt-chart/contexts";
+import { ISSUE_GANTT_SIDEBAR_GRID } from "@/components/gantt-chart/constants";
 import { GanttChartRoot } from "@/components/gantt-chart/root";
 import { IssueGanttSidebar } from "@/components/gantt-chart/sidebar/issues/sidebar";
 // hooks
@@ -199,12 +200,13 @@ export const BaseGanttRoot = observer(function BaseGanttRoot(props: IBaseGanttRo
             blockUpdateHandler={updateIssueBlockStructure}
             blockToRender={(data: TIssue) => <IssueGanttBlock issueId={data.id} isEpic={isEpic} />}
             sidebarHeaderToRender={({ title }) => (
-              <div className="grid w-full grid-cols-[minmax(240px,1fr)_120px_72px_72px_72px] items-end gap-3">
-                <h6>{title}</h6>
-                <h6>Employees</h6>
-                <h6>Begin</h6>
-                <h6>End</h6>
-                <h6>{t("common.duration")}</h6>
+              <div className="grid w-full items-end gap-2" style={{ gridTemplateColumns: ISSUE_GANTT_SIDEBAR_GRID }}>
+                <h6 className="truncate">Date</h6>
+                <h6 className="truncate">{title === t("issue.label", { count: 2 }) ? "Task" : title}</h6>
+                <h6 className="truncate">Employees</h6>
+                <h6 className="truncate">Begin</h6>
+                <h6 className="truncate">End</h6>
+                <h6 className="truncate">{t("common.duration")}</h6>
               </div>
             )}
             sidebarToRender={(sidebarProps) => (

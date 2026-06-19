@@ -96,6 +96,7 @@ export const MonthChartView = observer(function MonthChartView(_props: any) {
             {weeks?.map((weekBlock) => (
               <div
                 key={`column-${weekBlock.startDate.toString()}-${weekBlock.endDate.toString()}`}
+                data-gantt-today={weekBlock.today ? "true" : undefined}
                 className={cn("h-full overflow-hidden outline-[0.25px] outline-subtle", {
                   "bg-accent-primary/20": weekBlock.today,
                 })}

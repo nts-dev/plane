@@ -49,7 +49,8 @@ export const GanttChartHeader = observer(function GanttChartHeader(props: Props)
 
       <div className="flex flex-wrap items-center gap-2">
         {VIEWS_LIST.map((chartView: any) => (
-          <div
+          <button
+            type="button"
             key={chartView?.key}
             className={cn(
               "cursor-pointer rounded-md bg-layer-transparent p-1 px-2 text-11 hover:bg-layer-transparent-hover",
@@ -60,14 +61,16 @@ export const GanttChartHeader = observer(function GanttChartHeader(props: Props)
             onClick={() => handleChartView(chartView?.key)}
           >
             {t(chartView?.i18n_title)}
-          </div>
+          </button>
         ))}
       </div>
 
       {showToday && (
         <button
           type="button"
-          className="rounded-md bg-layer-transparent p-1 px-2 text-11 hover:bg-layer-transparent-hover"
+          className={cn("rounded-md bg-layer-transparent p-1 px-2 text-11 hover:bg-layer-transparent-hover", {
+            "bg-layer-transparent-selected": currentView === "day",
+          })}
           onClick={handleToday}
         >
           {t("common.today")}

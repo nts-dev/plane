@@ -75,9 +75,48 @@ export const getDateFromPositionOnGantt = (position: number, chartData: ChartDat
 
   const newDate = addDaysToDate(chartData.data.startDate, numberOfDaysSinceStart);
 
-  if (!newDate) undefined;
+  if (!newDate) return;
 
   return newDate;
+};
+
+const getMinutesFromTime = (time: string | undefined | null, fallbackMinutes: number) => {
+  if (!time) return fallbackMinutes;
+
+  const [hours = "0", minutes = "0"] = time.split(":");
+  const parsedHours = Number(hours);
+  const parsedMinutes = Number(minutes);
+
+  if (!Number.isFinite(parsedHours) || !Number.isFinite(parsedMinutes)) return fallbackMinutes;
+
+  return parsedHours * 60 + parsedMinutes;
+};
+
+const getDayViewItemPositionWidth = (chartData: ChartDataType, itemData: IGanttBlock) => {
+  const chartDate = new Date(chartData.data.startDate);
+  chartDate.setHours(0, 0, 0, 0);
+
+  const itemStartDate = getDate(itemData.start_date);
+  const itemTargetDate = getDate(itemData.target_date);
+  itemStartDate?.setHours(0, 0, 0, 0);
+  itemTargetDate?.setHours(0, 0, 0, 0);
+
+  const startsBeforeOrOnChartDate = itemStartDate ? itemStartDate.getTime() <= chartDate.getTime() : false;
+  const endsAfterOrOnChartDate = itemTargetDate ? itemTargetDate.getTime() >= chartDate.getTime() : false;
+
+  if (!startsBeforeOrOnChartDate && !endsAfterOrOnChartDate) return;
+  if (itemStartDate && itemTargetDate && (chartDate < itemStartDate || chartDate > itemTargetDate)) return;
+
+  const startsToday = itemStartDate?.getTime() === chartDate.getTime();
+  const endsToday = itemTargetDate?.getTime() === chartDate.getTime();
+  const startMinutes = startsToday ? getMinutesFromTime(itemData.data?.start_time, 0) : 0;
+  const targetMinutes = endsToday ? getMinutesFromTime(itemData.data?.target_time, 24 * 60) : 24 * 60;
+  const durationMinutes = Math.max(targetMinutes - startMinutes, 15);
+
+  return {
+    marginLeft: (startMinutes / 60) * chartData.data.dayWidth,
+    width: (durationMinutes / 60) * chartData.data.dayWidth,
+  };
 };
 
 /**
@@ -87,6 +126,8 @@ export const getDateFromPositionOnGantt = (position: number, chartData: ChartDat
  * @returns
  */
 export const getItemPositionWidth = (chartData: ChartDataType, itemData: IGanttBlock) => {
+  if (chartData.key === "day") return getDayViewItemPositionWidth(chartData, itemData);
+
   let scrollPosition: number = 0;
   let scrollWidth: number = DEFAULT_BLOCK_WIDTH;
 

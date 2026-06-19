@@ -108,5 +108,17 @@ export const VIEWS_LIST: ChartDataType[] = [
   },
 ];
 
+const DAY_VIEW_DATA: ChartDataType = {
+  key: "day",
+  i18n_title: "common.today",
+  data: {
+    startDate: new Date(),
+    currentDate: new Date(),
+    endDate: new Date(),
+    approxFilterRange: 0,
+    dayWidth: 80,
+  },
+};
+
 export const currentViewDataWithView = (view: TGanttViews = "month") =>
-  VIEWS_LIST.find((_viewData) => _viewData.key === view);
+  view === "day" ? DAY_VIEW_DATA : VIEWS_LIST.find((_viewData) => _viewData.key === view);

@@ -8,7 +8,7 @@ import { observer } from "mobx-react";
 // plane imports
 import type { IGanttBlock } from "@plane/types";
 import { Row } from "@plane/ui";
-import { cn } from "@plane/utils";
+import { cn, findTotalDaysInRange, getDate, renderFormattedDate } from "@plane/utils";
 // components
 import { MultipleSelectEntityAction } from "@/components/core/multiple-select";
 import {
@@ -21,7 +21,7 @@ import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import type { TSelectionHelper } from "@/hooks/use-multiple-select";
 import { useTimeLineChartStore } from "@/hooks/use-timeline-chart";
 // local imports
-import { BLOCK_HEIGHT, GANTT_SELECT_GROUP } from "../../constants";
+import { BLOCK_HEIGHT, GANTT_SELECT_GROUP, ISSUE_GANTT_SIDEBAR_GRID } from "../../constants";
 
 type Props = {
   block: IGanttBlock;
@@ -33,6 +33,40 @@ type Props = {
   hasChildren?: boolean;
   isCollapsed?: boolean;
   toggleCollapse?: (issueId: string) => void;
+};
+
+const getDateTime = (date: string | undefined | null, time: string | undefined | null): Date | undefined => {
+  const parsedDate = getDate(date);
+  if (!parsedDate) return;
+
+  const [hours = "0", minutes = "0", seconds = "0"] = time?.split(":") ?? [];
+  parsedDate.setHours(Number(hours), Number(minutes), Number(seconds), 0);
+
+  return parsedDate;
+};
+
+const formatDurationInHours = (block: IGanttBlock): string | undefined => {
+  const hasTimeRange = !!block.data?.start_time && !!block.data?.target_time;
+  const startDateTime = hasTimeRange ? getDateTime(block.start_date, block.data?.start_time) : undefined;
+  const targetDateTime = hasTimeRange ? getDateTime(block.target_date, block.data?.target_time) : undefined;
+
+  if (startDateTime && targetDateTime) {
+    const durationInMinutes = Math.max(0, Math.round((targetDateTime.getTime() - startDateTime.getTime()) / 60000));
+    const hours = Math.floor(durationInMinutes / 60);
+    const minutes = durationInMinutes % 60;
+
+    if (hours === 0 && minutes === 0) return "0 hrs";
+    if (minutes === 0) return `${hours} hr${hours === 1 ? "" : "s"}`;
+    if (hours === 0) return `${minutes} min`;
+
+    return `${hours}h ${minutes}m`;
+  }
+
+  const dateDuration = findTotalDaysInRange(block.start_date, block.target_date);
+  if (!dateDuration) return;
+
+  const hours = dateDuration * 24;
+  return `${hours} hrs`;
 };
 
 export const IssuesSidebarBlock = observer(function IssuesSidebarBlock(props: Props) {
@@ -48,17 +82,17 @@ export const IssuesSidebarBlock = observer(function IssuesSidebarBlock(props: Pr
     toggleCollapse,
   } = props;
   // store hooks
-  const { updateActiveBlockId, isBlockActive, getNumberOfDaysFromPosition } = useTimeLineChartStore();
+  const { updateActiveBlockId, isBlockActive } = useTimeLineChartStore();
   const { getIsIssuePeeked } = useIssueDetail();
 
-  const isBlockComplete = !!block?.start_date && !!block?.target_date;
-  const duration = isBlockComplete ? getNumberOfDaysFromPosition(block?.position?.width) : undefined;
+  const duration = formatDurationInHours(block);
 
   if (!block?.data) return null;
 
   const isIssueSelected = selectionHelpers?.getIsEntitySelected(block.id);
   const isIssueFocused = selectionHelpers?.getIsEntityActive(block.id);
   const isBlockHoveredOn = isBlockActive(block.id);
+  const dateLabel = renderFormattedDate(block.start_date ?? block.target_date) ?? "--";
 
   return (
     <div
@@ -98,7 +132,13 @@ export const IssuesSidebarBlock = observer(function IssuesSidebarBlock(props: Pr
             />
           </div>
         )}
-        <div className="grid h-full min-w-0 flex-grow grid-cols-[minmax(240px,1fr)_120px_72px_72px_72px] items-center gap-3 truncate">
+        <div
+          className="grid h-full min-w-0 flex-grow items-center gap-2 truncate"
+          style={{ gridTemplateColumns: ISSUE_GANTT_SIDEBAR_GRID }}
+        >
+          <span className={cn("truncate text-13 text-secondary", { "text-placeholder": dateLabel === "--" })}>
+            {dateLabel}
+          </span>
           <IssueGanttSidebarBlock
             issueId={block.data.id}
             isEpic={isEpic}
@@ -110,14 +150,8 @@ export const IssuesSidebarBlock = observer(function IssuesSidebarBlock(props: Pr
           <IssueGanttSidebarAssignees issueId={block.data.id} />
           <IssueGanttSidebarTime value={block.data.start_time} />
           <IssueGanttSidebarTime value={block.data.target_time} />
-          <div className="flex-shrink-0 text-13 text-secondary">
-            {duration ? (
-              <span>
-                {duration} day{duration > 1 ? "s" : ""}
-              </span>
-            ) : (
-              <span className="text-placeholder">--</span>
-            )}
+          <div className="flex-shrink-0 truncate text-13 text-secondary">
+            {duration ? <span>{duration}</span> : <span className="text-placeholder">--</span>}
           </div>
         </div>
       </Row>

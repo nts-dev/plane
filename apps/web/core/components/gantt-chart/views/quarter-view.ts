@@ -39,7 +39,7 @@ const generateQuarterChart = (quarterPayload: ChartDataType, side: null | "left"
 
   // if side is null generate months on both side of current date
   if (side === null) {
-    const currentDate = renderState.data.currentDate;
+    const currentDate = targetDate ?? renderState.data.currentDate;
 
     minusDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - range, 1);
     plusDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + range, 0);
@@ -55,6 +55,7 @@ const generateQuarterChart = (quarterPayload: ChartDataType, side: null | "left"
       ...renderState,
       data: {
         ...renderState.data,
+        currentDate,
         startDate,
         endDate,
       },
